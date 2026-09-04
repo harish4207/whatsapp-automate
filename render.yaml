@@ -1,0 +1,25 @@
+﻿services:
+  - type: web
+    name: whatsapp-nutrition-bot
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/cards/health
+    envVars:
+      - key: SERVER_PORT
+        value: 8085
+      - key: PORT
+        value: 8085
+      - key: WHATSAPP_VERIFY_TOKEN
+        value: my_access_token_2026
+      - key: META_PHONE_NUMBER_ID
+        value: "1219522864587242"
+      - key: META_ACCESS_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY_SECONDARY
+        sync: false
+      - key: APP_PUBLIC_BASE_URL
+        sync: false
