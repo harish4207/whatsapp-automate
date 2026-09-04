@@ -63,4 +63,26 @@ public class ScheduledBroadcastService {
         log.info("Morning broadcast completed successfully. Total delivered: {}", count);
         return count;
     }
+
+    /**
+     * Anti-Sleep Self-Ping Heartbeat: Executes every 10 minutes.
+     * Prevents free cloud hosts (such as Render) from entering idle sleep mode.
+     */
+    @Scheduled(fixedRate = 600000) // 10 minutes = 600,000 ms
+    public void executeKeepAliveHeartbeat() {
+        try {
+            String baseUrl = dailyPlanService.getPublicBaseUrl();
+            if (baseUrl != null && !baseUrl.isBlank() && !baseUrl.contains("localhost")) {
+                String targetUrl = baseUrl + "/api/cards/health";
+                org.springframework.web.client.RestClient.create()
+                        .get()
+                        .uri(targetUrl)
+                        .retrieve()
+                        .toBodilessEntity();
+                log.info("📡 [KEEP-ALIVE] Dispatched heartbeat ping to self: {}", targetUrl);
+            }
+        } catch (Exception e) {
+            log.debug("[KEEP-ALIVE] Heartbeat ping completed: {}", e.getMessage());
+        }
+    }
 }

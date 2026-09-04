@@ -62,4 +62,9 @@ public class NutritionCardController {
 
         return new ResponseEntity<>(imageBytes, headers, HttpStatus.OK);
     }
+
+    @GetMapping("/health")
+    public ResponseEntity<String> healthCheck() {
+        return ResponseEntity.ok("OK - WhatsApp Nutrition Engine Running");
+    }
 }

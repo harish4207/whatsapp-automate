@@ -10,6 +10,7 @@ import com.yourapp.nutrition.repository.PlanMealRepository;
 import com.yourapp.user.entity.User;
 import com.yourapp.whatsapp.client.WhatsAppApiClient;
 import com.yourapp.whatsapp.client.WhatsAppApiClient.ButtonOption;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Getter
 @Slf4j
 public class DailyPlanService {
 
