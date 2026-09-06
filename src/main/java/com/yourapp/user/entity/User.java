@@ -40,17 +40,17 @@ public class User {
     @Column(length = 50)
     private String goal; // FAT_LOSS, MAINTENANCE, MUSCLE_GAIN
 
-    @Column(name = "diet_type", length = 50)
-    private String dietType; // VEG, NON_VEG, VEGAN, EGGETARIAN, KETO
+    @Column(name = "diet_type", length = 100)
+    private String dietType; // VEG, NON_VEG, VEGAN, EGGETARIAN, KETO, MULTIPLE
 
-    @Column(length = 50)
-    private String cuisine; // NORTH_INDIAN, SOUTH_INDIAN, CONTINENTAL
+    @Column(length = 100)
+    private String cuisine; // NORTH_INDIAN, SOUTH_INDIAN, NORTH_SOUTH_INDIAN, CONTINENTAL, ALL
 
     @Column(length = 20)
     private String budget; // BUDGET, MODERATE, PREMIUM
 
-    @Column(name = "health_condition", length = 50)
-    private String healthCondition; // NONE, DIABETES, HYPERTENSION, THYROID, PCOS, FATTY_LIVER
+    @Column(name = "health_condition", length = 255)
+    private String healthCondition; // Supports multiple e.g. DIABETES, HYPERTENSION, THYROID, PCOS
 
     @Column(name = "cooking_time")
     private Integer cookingTime; // in minutes

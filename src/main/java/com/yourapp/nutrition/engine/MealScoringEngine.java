@@ -56,9 +56,12 @@ public class MealScoringEngine {
         int calorieDelta = Math.abs(meal.getCalories() - targetSlotCalories);
         score -= (calorieDelta * 0.3); // 100 calorie difference = -30 points
 
-        // B. Cuisine Match Bonus
-        if (user.getCuisine() != null && user.getCuisine().equalsIgnoreCase(meal.getCuisine())) {
-            score += 40.0;
+        // B. Cuisine Match Bonus (supports multi-cuisine like NORTH_SOUTH_INDIAN or ALL)
+        if (user.getCuisine() != null) {
+            String uc = user.getCuisine().toUpperCase();
+            if (uc.contains("ALL") || uc.contains("BOTH") || (meal.getCuisine() != null && uc.contains(meal.getCuisine().toUpperCase()))) {
+                score += 40.0;
+            }
         }
 
         // C. Protein Density Bonus
@@ -95,13 +98,21 @@ public class MealScoringEngine {
             return Collections.emptySet();
         }
 
-        Optional<com.yourapp.nutrition.entity.Condition> condOpt = conditionRepository.findByNameIgnoreCase(user.getHealthCondition());
-        if (condOpt.isEmpty()) {
+        String[] parts = user.getHealthCondition().split("[,+&/]|(?i)\\band\\b");
+        List<Long> conditionIds = new ArrayList<>();
+        for (String part : parts) {
+            String trimmed = part.trim();
+            if (!trimmed.isEmpty() && !"NONE".equalsIgnoreCase(trimmed)) {
+                conditionRepository.findByNameIgnoreCase(trimmed).ifPresent(c -> conditionIds.add(c.getId()));
+            }
+        }
+
+        if (conditionIds.isEmpty()) {
             return Collections.emptySet();
         }
 
         List<MealConditionRule> rules = conditionRuleRepository.findByConditionIdInAndSuitability(
-                List.of(condOpt.get().getId()), "AVOID"
+                conditionIds, "AVOID"
         );
 
         Set<Long> avoidMealIds = new HashSet<>();

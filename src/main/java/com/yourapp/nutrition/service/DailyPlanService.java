@@ -207,14 +207,36 @@ public class DailyPlanService {
         int filledProtBlocks = Math.min(totalBlocks, (int) Math.round((actualProtein / Math.max(1, targetProtein)) * totalBlocks));
         String protProgressBar = "█".repeat(filledProtBlocks) + "░".repeat(Math.max(0, totalBlocks - filledProtBlocks));
 
-        String shieldBadge = switch (user.getHealthCondition() != null ? user.getHealthCondition() : "NONE") {
-            case "DIABETES" -> "🛡️ *Clinical Shield:* Diabetes Safe (Low GI, High Fiber) 🩺";
-            case "HYPERTENSION" -> "🛡️ *Clinical Shield:* Low Sodium & DASH Compliant 🫀";
-            case "THYROID" -> "🛡️ *Clinical Shield:* Thyroid Support (Selenium/Zinc Rich) 🦋";
-            case "PCOS" -> "🛡️ *Clinical Shield:* PCOS Hormone & Insulin Balance 🌸";
-            case "FATTY_LIVER" -> "🛡️ *Clinical Shield:* NAFLD Liver Detox & Low Sat Fat 🥑";
-            default -> "🛡️ *Clinical Shield:* General Fitness & Wellness Certified ✅";
-        };
+        String condUpper = user.getHealthCondition() != null ? user.getHealthCondition().toUpperCase() : "NONE";
+        List<String> shields = new ArrayList<>();
+        List<String> advices = new ArrayList<>();
+
+        if (condUpper.contains("DIABETES") || condUpper.contains("SUGAR")) {
+            shields.add("Diabetes Safe (Low GI) 🩺");
+            advices.add("Prioritize whole pulses & millets to keep glucose steady.");
+        }
+        if (condUpper.contains("HYPERTENSION") || condUpper.contains("BP")) {
+            shields.add("Low Sodium / BP Safe 🫀");
+            advices.add("Keep table salt away and hydrate with potassium-rich water.");
+        }
+        if (condUpper.contains("THYROID")) {
+            shields.add("Thyroid Support 🦋");
+            advices.add("Zinc & selenium rich foods included; take thyroid meds fasting.");
+        }
+        if (condUpper.contains("PCOS") || condUpper.contains("PCOD")) {
+            shields.add("PCOS Hormone Balance 🌸");
+            advices.add("Anti-inflammatory choices selected; enjoy spearmint or cinnamon tea.");
+        }
+        if (condUpper.contains("FATTY_LIVER") || condUpper.contains("LIVER")) {
+            shields.add("Liver Detox Care 🥑");
+            advices.add("Lean proteins and antioxidants picked to protect your liver enzymes.");
+        }
+        if (shields.isEmpty()) {
+            shields.add("General Fitness & Wellness Certified ✅");
+            advices.add("Sip water before meals and listen to your body's natural satiety cues.");
+        }
+
+        String shieldBadge = "🛡️ *Clinical Shield:* " + String.join(" + ", shields);
 
         StringBuilder sb = new StringBuilder();
         sb.append("📋 *DAILY NUTRITION BLUEPRINT*\n");
@@ -237,14 +259,7 @@ public class DailyPlanService {
         }
         sb.append("━━━━━━━━━━━━━━━━━━━━\n");
         
-        String doctorNote = switch (user.getHealthCondition() != null ? user.getHealthCondition() : "NONE") {
-            case "DIABETES" -> "🩺 *Dr. Mohan's Advice:* Prioritize whole pulses & millets. Take a brisk 10-min stroll after lunch to keep sugar flat.";
-            case "HYPERTENSION" -> "🩺 *Dr. Mohan's Advice:* Keep extra salt away from the dining table. Stay well hydrated with coconut water or lime water.";
-            case "THYROID" -> "🩺 *Dr. Mohan's Advice:* High zinc & selenium sources added today. Remember medication on an empty stomach.";
-            case "PCOS" -> "🩺 *Dr. Mohan's Advice:* Anti-inflammatory choices selected. Enjoy a cup of warm spearmint/cinnamon tea this afternoon.";
-            case "FATTY_LIVER" -> "🩺 *Dr. Mohan's Advice:* Clean antioxidants and lean proteins picked to support your liver enzymes.";
-            default -> "🩺 *Dr. Mohan's Advice:* You're building steady consistency! Sip water before meals and listen to your body's satiety cues.";
-        };
+        String doctorNote = "🩺 *Coach Mohan's Advice:* " + String.join(" ", advices);
         sb.append(doctorNote).append("\n\n");
         sb.append("👇 *Quick Actions:* Swap meals, check groceries, or tap *Completed* when done:");
 

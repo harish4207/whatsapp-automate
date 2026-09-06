@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -103,6 +104,9 @@ public class OnboardingService {
                 break;
             case "AWAITING_CONDITIONS":
                 handleConditionsStep(user, state, message);
+                break;
+            case "AWAITING_CONDITIONS_MORE":
+                handleConditionsMoreStep(user, state, message);
                 break;
             case "AWAITING_ENERGY_SLEEP":
                 handleEnergySleepStep(user, state, message);
@@ -233,52 +237,116 @@ public class OnboardingService {
 
     private void handleDietStep(User user, ConversationState state, MetaWebhookPayload.Message message) {
         String selectedId = extractInteractiveId(message);
-        if (selectedId == null || !selectedId.startsWith("DIET_")) {
-            apiClient.sendTextMessage(user.getPhoneNumber(), "Please select your diet from the list menu.");
-            return;
+        String text = extractText(message);
+        String diet = null;
+
+        if (selectedId != null && selectedId.startsWith("DIET_")) {
+            diet = selectedId.replace("DIET_", "");
+        } else if (text != null && !text.isBlank()) {
+            String lower = text.toLowerCase();
+            if ((lower.contains("non") && lower.contains("veg")) || lower.contains("both") || lower.contains("mix")) {
+                diet = "VEG_NON_VEG";
+            } else if (lower.contains("pure veg") || lower.contains("vegetarian")) {
+                diet = "VEG";
+            } else if (lower.contains("egg")) {
+                diet = "EGGETARIAN";
+            } else if (lower.contains("vegan")) {
+                diet = "VEGAN";
+            } else if (lower.contains("keto")) {
+                diet = "KETO";
+            } else if (lower.contains("chicken") || lower.contains("meat") || lower.contains("fish") || lower.contains("non veg")) {
+                diet = "NON_VEG";
+            } else {
+                diet = text.trim();
+            }
         }
 
-        user.setDietType(selectedId.replace("DIET_", ""));
-        userRepository.save(user);
-
-        state.setCurrentStep("AWAITING_CUISINE");
-        stateRepository.save(state);
-
-        // Prompt for Cuisine
-        apiClient.sendButtonMessage(user.getPhoneNumber(),
-                "Which cuisine do you prefer for your daily meals?",
-                List.of(
-                        ButtonOption.builder().id("CUISINE_NORTH_INDIAN").title("North Indian 🍛").build(),
-                        ButtonOption.builder().id("CUISINE_SOUTH_INDIAN").title("South Indian 🥞").build(),
-                        ButtonOption.builder().id("CUISINE_CONTINENTAL").title("Continental 🥗").build()
-                )
-        );
-    }
-
-    private void handleCuisineStep(User user, ConversationState state, MetaWebhookPayload.Message message) {
-        String buttonId = extractButtonId(message);
-        if (buttonId == null || !buttonId.startsWith("CUISINE_")) {
-            apiClient.sendButtonMessage(user.getPhoneNumber(),
-                    "Please select your preferred cuisine:",
+        if (diet == null) {
+            apiClient.sendListMessage(user.getPhoneNumber(),
+                    "Diet Preference",
+                    "Choose the dietary style that best fits your lifestyle (or type multiple):",
+                    "Select Diet",
                     List.of(
-                            ButtonOption.builder().id("CUISINE_NORTH_INDIAN").title("North Indian 🍛").build(),
-                            ButtonOption.builder().id("CUISINE_SOUTH_INDIAN").title("South Indian 🥞").build(),
-                            ButtonOption.builder().id("CUISINE_CONTINENTAL").title("Continental 🥗").build()
+                            ListRowOption.builder().id("DIET_VEG_NON_VEG").title("Veg + Non-Veg 🍛🍗").description("Balanced mix of Veg & Non-Veg meals").build(),
+                            ListRowOption.builder().id("DIET_VEG").title("Pure Vegetarian 🥬").description("Lacto-veg (Dal, Paneer, Veggies, Dairy)").build(),
+                            ListRowOption.builder().id("DIET_EGGETARIAN").title("Eggetarian 🥚").description("Vegetarian diet including whole eggs").build(),
+                            ListRowOption.builder().id("DIET_NON_VEG").title("Non-Vegetarian 🍗").description("Chicken, Fish, Eggs & Dairy").build(),
+                            ListRowOption.builder().id("DIET_VEGAN").title("Vegan 🌱").description("100% plant-based, strictly zero dairy").build(),
+                            ListRowOption.builder().id("DIET_KETO").title("Keto 🥑").description("Ultra low-carb, high healthy fats").build(),
+                            ListRowOption.builder().id("DIET_FLEXIBLE").title("Flexible / Multiple 📝").description("Type details (e.g. Veg weekdays, Non-veg weekends)").build()
                     )
             );
             return;
         }
 
-        user.setCuisine(buttonId.replace("CUISINE_", ""));
+        user.setDietType(diet);
+        userRepository.save(user);
+
+        state.setCurrentStep("AWAITING_CUISINE");
+        stateRepository.save(state);
+
+        sendCuisinePrompt(user.getPhoneNumber());
+    }
+
+    private void sendCuisinePrompt(String phoneNumber) {
+        apiClient.sendListMessage(phoneNumber,
+                "Cuisine Variety 🍽️",
+                "Which cuisines do you prefer for your meals? You can choose combo or single style:",
+                "Select Cuisine",
+                List.of(
+                        ListRowOption.builder().id("CUISINE_NORTH_SOUTH_INDIAN").title("North + South Indian 🍛🥞").description("Enjoy both North & South Indian dishes").build(),
+                        ListRowOption.builder().id("CUISINE_SOUTH_INDIAN").title("South Indian Specialties 🥞").description("Dosa, Idli, Sambar, Upma, Rasam, Curd Rice").build(),
+                        ListRowOption.builder().id("CUISINE_NORTH_INDIAN").title("North Indian Classics 🍛").description("Roti, Dal Tadka, Paneer, Sabzi, Khichdi").build(),
+                        ListRowOption.builder().id("CUISINE_ALL").title("All Cuisines (Mixed) 🌎").description("North Indian, South Indian & Continental variety").build(),
+                        ListRowOption.builder().id("CUISINE_CONTINENTAL").title("Continental & Bowls 🥗").description("Oats, Smoothies, Grilled Meals, Salads").build()
+                )
+        );
+    }
+
+    private void handleCuisineStep(User user, ConversationState state, MetaWebhookPayload.Message message) {
+        String interactiveId = extractInteractiveId(message);
+        String buttonId = extractButtonId(message);
+        String text = extractText(message);
+        String cuisine = null;
+
+        String id = interactiveId != null ? interactiveId : buttonId;
+        if (id != null && id.startsWith("CUISINE_")) {
+            cuisine = id.replace("CUISINE_", "");
+        } else if (text != null && !text.isBlank()) {
+            String lower = text.toLowerCase();
+            if (lower.contains("both") || (lower.contains("north") && lower.contains("south"))) {
+                cuisine = "NORTH_SOUTH_INDIAN";
+            } else if (lower.contains("all")) {
+                cuisine = "ALL";
+            } else if (lower.contains("south")) {
+                cuisine = "SOUTH_INDIAN";
+            } else if (lower.contains("north")) {
+                cuisine = "NORTH_INDIAN";
+            } else if (lower.contains("continental")) {
+                cuisine = "CONTINENTAL";
+            } else {
+                cuisine = text.trim();
+            }
+        }
+
+        if (cuisine == null) {
+            sendCuisinePrompt(user.getPhoneNumber());
+            return;
+        }
+
+        user.setCuisine(cuisine);
         userRepository.save(user);
 
         state.setCurrentStep("AWAITING_CONDITIONS");
         stateRepository.save(state);
 
-        // Prompt for Health Conditions using Interactive List Menu (6 options)
-        apiClient.sendListMessage(user.getPhoneNumber(),
+        sendConditionsPrompt(user.getPhoneNumber());
+    }
+
+    private void sendConditionsPrompt(String phoneNumber) {
+        apiClient.sendListMessage(phoneNumber,
                 "Health & Medical Profile 🩺",
-                "Do you have any existing health conditions? We apply strict clinical contraindications to keep you 100% safe:",
+                "Do you have any existing health conditions? Select from below, or type multiple (e.g. 'Diabetes and BP'):",
                 "Select Condition",
                 List.of(
                         ListRowOption.builder().id("COND_NONE").title("General Fitness ✅").description("No chronic conditions; balanced nutrition").build(),
@@ -286,35 +354,140 @@ public class OnboardingService {
                         ListRowOption.builder().id("COND_HYPERTENSION").title("High BP / Hyper 🫀").description("Low sodium, potassium-rich, DASH principles").build(),
                         ListRowOption.builder().id("COND_THYROID").title("Thyroid Support 🦋").description("Selenium & zinc rich, avoids raw goitrogens").build(),
                         ListRowOption.builder().id("COND_PCOS").title("PCOS / PCOD 🌸").description("Hormone balancing, anti-inflammatory, low GI").build(),
-                        ListRowOption.builder().id("COND_FATTY_LIVER").title("Fatty Liver Care 🥑").description("Low saturated fats, choline, liver detox support").build()
+                        ListRowOption.builder().id("COND_FATTY_LIVER").title("Fatty Liver Care 🥑").description("Low saturated fats, choline, liver detox support").build(),
+                        ListRowOption.builder().id("COND_DIABETES_BP").title("Diabetes + High BP 🩺🫀").description("Combined low GI and low sodium care").build(),
+                        ListRowOption.builder().id("COND_PCOS_THYROID").title("PCOS + Thyroid 🌸🦋").description("Hormone regulation & thyroid metabolic support").build(),
+                        ListRowOption.builder().id("COND_DIABETES_LIVER").title("Diabetes + Fatty Liver 🩺🥑").description("Insulin sensitivity & hepatic lipid clearance").build(),
+                        ListRowOption.builder().id("COND_CUSTOM").title("Multiple / Other 📝").description("Type any combination of conditions below").build()
                 )
         );
     }
 
     private void handleConditionsStep(User user, ConversationState state, MetaWebhookPayload.Message message) {
         String interactiveId = extractInteractiveId(message);
-        if (interactiveId == null || !interactiveId.startsWith("COND_")) {
-            apiClient.sendListMessage(user.getPhoneNumber(),
-                    "Health & Medical Profile 🩺",
-                    "Please select one of the following health profiles:",
-                    "Select Condition",
+        String buttonId = extractButtonId(message);
+        String text = extractText(message);
+        String id = interactiveId != null ? interactiveId : buttonId;
+
+        // 1. Text Parsing (User typed multiple conditions, e.g. "Diabetes and BP", "Sugar, Thyroid")
+        if (text != null && !text.isBlank() && (id == null || !id.startsWith("COND_"))) {
+            List<String> detected = parseConditionsFromText(text);
+            if (!detected.isEmpty()) {
+                if (detected.contains("NONE")) {
+                    user.setHealthCondition("NONE");
+                } else {
+                    user.setHealthCondition(String.join(", ", detected));
+                }
+                userRepository.save(user);
+                advanceToEnergySleepStep(user, state);
+                return;
+            }
+        }
+
+        if (id == null || !id.startsWith("COND_")) {
+            sendConditionsPrompt(user.getPhoneNumber());
+            return;
+        }
+
+        // 2. Pre-combined or Single selections
+        switch (id) {
+            case "COND_NONE":
+                user.setHealthCondition("NONE");
+                userRepository.save(user);
+                advanceToEnergySleepStep(user, state);
+                break;
+            case "COND_DIABETES_BP":
+                user.setHealthCondition("DIABETES, HYPERTENSION");
+                userRepository.save(user);
+                advanceToEnergySleepStep(user, state);
+                break;
+            case "COND_PCOS_THYROID":
+                user.setHealthCondition("PCOS, THYROID");
+                userRepository.save(user);
+                advanceToEnergySleepStep(user, state);
+                break;
+            case "COND_DIABETES_LIVER":
+                user.setHealthCondition("DIABETES, FATTY_LIVER");
+                userRepository.save(user);
+                advanceToEnergySleepStep(user, state);
+                break;
+            case "COND_CUSTOM":
+                apiClient.sendTextMessage(user.getPhoneNumber(),
+                        "📝 *Please reply with your health conditions:*\n" +
+                        "Example: `Diabetes, High BP` or `Thyroid, PCOS`");
+                break;
+            default:
+                // Single condition picked (e.g. COND_DIABETES, COND_HYPERTENSION, COND_THYROID, COND_PCOS, COND_FATTY_LIVER)
+                String cond = id.replace("COND_", "");
+                user.setHealthCondition(cond);
+                userRepository.save(user);
+
+                // Multi-select prompt: ask if they want to add another condition
+                state.setCurrentStep("AWAITING_CONDITIONS_MORE");
+                stateRepository.save(state);
+
+                apiClient.sendButtonMessage(user.getPhoneNumber(),
+                        "🩺 *Saved:* " + formatConditionsDisplay(cond) + "\n\n" +
+                        "Do you have any *other* health condition to add (like BP, Thyroid, PCOS, or Fatty Liver)?",
+                        List.of(
+                                ButtonOption.builder().id("COND_ADD_MORE").title("➕ Add Another").build(),
+                                ButtonOption.builder().id("COND_DONE").title("✅ I'm Done").build()
+                        )
+                );
+                break;
+        }
+    }
+
+    private void handleConditionsMoreStep(User user, ConversationState state, MetaWebhookPayload.Message message) {
+        String buttonId = extractButtonId(message);
+        String interactiveId = extractInteractiveId(message);
+        String text = extractText(message);
+
+        if ("COND_DONE".equals(buttonId) || "done".equalsIgnoreCase(text) || "no".equalsIgnoreCase(text) || "none".equalsIgnoreCase(text)) {
+            advanceToEnergySleepStep(user, state);
+            return;
+        }
+
+        if ("COND_ADD_MORE".equals(buttonId)) {
+            sendConditionsPrompt(user.getPhoneNumber());
+            return;
+        }
+
+        String newCond = null;
+        String id = interactiveId != null ? interactiveId : buttonId;
+        if (id != null && id.startsWith("COND_") && !"COND_NONE".equals(id)) {
+            newCond = id.replace("COND_", "");
+        } else if (text != null && !text.isBlank()) {
+            List<String> parsed = parseConditionsFromText(text);
+            if (!parsed.isEmpty()) {
+                newCond = String.join(", ", parsed);
+            }
+        }
+
+        if (newCond != null) {
+            String current = user.getHealthCondition();
+            if (current == null || current.isBlank() || "NONE".equalsIgnoreCase(current)) {
+                user.setHealthCondition(newCond);
+            } else if (!current.contains(newCond)) {
+                user.setHealthCondition(current + ", " + newCond);
+            }
+            userRepository.save(user);
+
+            apiClient.sendButtonMessage(user.getPhoneNumber(),
+                    "🩺 *Saved:* " + formatConditionsDisplay(user.getHealthCondition()) + "\n\n" +
+                    "Do you have any other condition to add?",
                     List.of(
-                            ListRowOption.builder().id("COND_NONE").title("General Fitness ✅").description("No chronic conditions; balanced nutrition").build(),
-                            ListRowOption.builder().id("COND_DIABETES").title("Diabetes / Sugar 🩺").description("Low GI, fiber-rich, strictly zero simple sugars").build(),
-                            ListRowOption.builder().id("COND_HYPERTENSION").title("High BP / Hyper 🫀").description("Low sodium, potassium-rich, DASH principles").build(),
-                            ListRowOption.builder().id("COND_THYROID").title("Thyroid Support 🦋").description("Selenium & zinc rich, avoids raw goitrogens").build(),
-                            ListRowOption.builder().id("COND_PCOS").title("PCOS / PCOD 🌸").description("Hormone balancing, anti-inflammatory, low GI").build(),
-                            ListRowOption.builder().id("COND_FATTY_LIVER").title("Fatty Liver Care 🥑").description("Low saturated fats, choline, liver detox support").build()
+                            ButtonOption.builder().id("COND_ADD_MORE").title("➕ Add Another").build(),
+                            ButtonOption.builder().id("COND_DONE").title("✅ I'm Done").build()
                     )
             );
             return;
         }
 
-        String condition = interactiveId.replace("COND_", "");
-        user.setHealthCondition(condition);
-        userRepository.save(user);
+        advanceToEnergySleepStep(user, state);
+    }
 
-        // Advance to Step 7: Energy & Sleep Pattern
+    private void advanceToEnergySleepStep(User user, ConversationState state) {
         state.setCurrentStep("AWAITING_ENERGY_SLEEP");
         stateRepository.save(state);
 
@@ -327,6 +500,40 @@ public class OnboardingService {
                         ButtonOption.builder().id("ENERGY_STRESS_SLEEP").title("Disturbed Sleep 🌙").build()
                 )
         );
+    }
+
+    private List<String> parseConditionsFromText(String text) {
+        List<String> list = new ArrayList<>();
+        String lower = text.toLowerCase();
+        if (lower.contains("diabet") || lower.contains("sugar")) list.add("DIABETES");
+        if (lower.contains("bp") || lower.contains("hypertens") || lower.contains("pressure")) list.add("HYPERTENSION");
+        if (lower.contains("thyroid")) list.add("THYROID");
+        if (lower.contains("pcos") || lower.contains("pcod")) list.add("PCOS");
+        if (lower.contains("fatty liver") || lower.contains("liver")) list.add("FATTY_LIVER");
+        if (list.isEmpty() && (lower.contains("none") || lower.contains("no condition") || lower.contains("healthy") || lower.contains("fit") || lower.contains("normal"))) {
+            list.add("NONE");
+        }
+        return list;
+    }
+
+    private String formatConditionsDisplay(String conditions) {
+        if (conditions == null || conditions.isBlank() || "NONE".equalsIgnoreCase(conditions)) {
+            return "General Fitness & Health ✅";
+        }
+        List<String> formatted = new ArrayList<>();
+        for (String c : conditions.split(",")) {
+            String trimmed = c.trim().toUpperCase();
+            switch (trimmed) {
+                case "DIABETES" -> formatted.add("Diabetes Safe (Low GI) 🩺");
+                case "HYPERTENSION" -> formatted.add("Hypertension / Low Sodium 🫀");
+                case "THYROID" -> formatted.add("Thyroid Support 🦋");
+                case "PCOS" -> formatted.add("PCOS / Hormone Balance 🌸");
+                case "FATTY_LIVER" -> formatted.add("Fatty Liver / Low Sat Fat 🥑");
+                case "NONE" -> formatted.add("General Fitness & Health ✅");
+                default -> formatted.add(trimmed + " Care 🩺");
+            }
+        }
+        return String.join(" + ", formatted);
     }
 
     private void handleEnergySleepStep(User user, ConversationState state, MetaWebhookPayload.Message message) {
@@ -398,14 +605,7 @@ public class OnboardingService {
         state.setCurrentStep("COMPLETE");
         stateRepository.save(state);
 
-        String conditionDisplay = switch (user.getHealthCondition() != null ? user.getHealthCondition() : "NONE") {
-            case "DIABETES" -> "Diabetes Safe (Low GI) 🩺";
-            case "HYPERTENSION" -> "Hypertension / Low Sodium 🫀";
-            case "THYROID" -> "Thyroid Support 🦋";
-            case "PCOS" -> "PCOS / Hormone Balance 🌸";
-            case "FATTY_LIVER" -> "Fatty Liver / Low Sat Fat 🥑";
-            default -> "General Fitness & Health ✅";
-        };
+        String conditionDisplay = formatConditionsDisplay(user.getHealthCondition());
 
         String summary = String.format(
                 "🌟 *PROFILE CALIBRATION COMPLETE!* 🌟\n" +
