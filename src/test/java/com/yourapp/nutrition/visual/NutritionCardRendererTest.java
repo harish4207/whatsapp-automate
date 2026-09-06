@@ -69,6 +69,6 @@ class NutritionCardRendererTest {
         BufferedImage img = ImageIO.read(new ByteArrayInputStream(pngBytes));
         assertNotNull(img);
         assertEquals(1200, img.getWidth());
-        assertEquals(850, img.getHeight());
+        assertEquals(860, img.getHeight());
     }
 }

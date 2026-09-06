@@ -55,6 +55,16 @@ public class User {
     @Column(name = "cooking_time")
     private Integer cookingTime; // in minutes
 
+    @Column(name = "clinical_notes", length = 1000)
+    private String clinicalNotes; // Long-term empathetic memory (e.g. cravings, digestive issues, knee pain)
+
+    @Column(name = "last_mood", length = 50)
+    private String lastMood; // Energetic, Tired, Bloated, Stressed
+
+    @Builder.Default
+    @Column(name = "streak_days")
+    private Integer streakDays = 1; // Consecutive days active/logged
+
     @Builder.Default
     private Boolean active = true;
 

@@ -65,6 +65,69 @@ public class ScheduledBroadcastService {
     }
 
     /**
+     * Proactive Craving Shield: Executes every afternoon at 04:30 PM IST.
+     * Checks in right when tea-time sugar and fried snack cravings hit.
+     */
+    @Scheduled(cron = "0 30 16 * * *", zone = "Asia/Kolkata")
+    public void executeAfternoonCravingShield() {
+        log.info("Starting proactive afternoon craving check-in (4:30 PM IST)...");
+        List<User> activeUsers = userRepository.findByActiveTrue();
+        for (User user : activeUsers) {
+            if (user.getAge() == null || user.getWeight() == null) continue;
+            try {
+                String name = user.getName() != null && !user.getName().isBlank() ? user.getName() : "Friend";
+                String msg = String.format(
+                        "☕ *Hi %s, it's 4:30 PM tea time!* 🌿\n\n" +
+                        "This is usually when energy dips and cravings for biscuits or fried snacks sneak in.\n\n" +
+                        "💡 *Dr. Aanya's Quick Shield:*\n" +
+                        "• Swap biscuits for roasted makhana, boiled chana, or a handful of almonds.\n" +
+                        "• Drink a glass of water first — mild dehydration often masquerades as sugar cravings!\n\n" +
+                        "How is your energy feeling right now? Reply *WATER* to check hydration or send a photo 📸 of your snack!",
+                        name
+                );
+                com.yourapp.whatsapp.client.WhatsAppApiClient client = dailyPlanService.getApiClient();
+                if (client != null) {
+                    client.sendTextMessage(user.getPhoneNumber(), msg);
+                }
+                Thread.sleep(50);
+            } catch (Exception e) {
+                log.error("Failed afternoon check-in for {}: {}", user.getPhoneNumber(), e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Evening Reflection & Sleep Wind-Down: Executes every night at 09:30 PM IST.
+     */
+    @Scheduled(cron = "0 30 21 * * *", zone = "Asia/Kolkata")
+    public void executeEveningCareCheckin() {
+        log.info("Starting proactive evening wind-down check-in (9:30 PM IST)...");
+        List<User> activeUsers = userRepository.findByActiveTrue();
+        for (User user : activeUsers) {
+            if (user.getAge() == null || user.getWeight() == null) continue;
+            try {
+                String name = user.getName() != null && !user.getName().isBlank() ? user.getName() : "Friend";
+                String msg = String.format(
+                        "🌙 *Good evening %s!* ✨\n\n" +
+                        "Another great day invested in your health and longevity. Proud of your consistency!\n\n" +
+                        "🛌 *Tonight's Recovery Note:*\n" +
+                        "• Avoid screens 30 mins before sleep to support deep metabolic melatonin.\n" +
+                        "• Keep dinner light and finish with warm water or chamomile/jeera tea.\n\n" +
+                        "Rest well and recharge. Dr. Aanya will have your fresh nutrition plan ready at 7:30 AM tomorrow!",
+                        name
+                );
+                com.yourapp.whatsapp.client.WhatsAppApiClient client = dailyPlanService.getApiClient();
+                if (client != null) {
+                    client.sendTextMessage(user.getPhoneNumber(), msg);
+                }
+                Thread.sleep(50);
+            } catch (Exception e) {
+                log.error("Failed evening check-in for {}: {}", user.getPhoneNumber(), e.getMessage());
+            }
+        }
+    }
+
+    /**
      * Anti-Sleep Self-Ping Heartbeat: Executes every 10 minutes.
      * Prevents free cloud hosts (such as Render) from entering idle sleep mode.
      */

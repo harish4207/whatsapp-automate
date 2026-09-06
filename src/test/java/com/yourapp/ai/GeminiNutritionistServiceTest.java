@@ -16,9 +16,12 @@ class GeminiNutritionistServiceTest {
         GeminiNutritionistService service = new GeminiNutritionistService(
                 "", // empty primary key
                 "", // empty secondary key
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
                 "", // empty grok key
-                "https://api.x.ai/v1/chat/completions"
+                "https://api.x.ai/v1/chat/completions",
+                "", // empty nvidia key
+                "https://integrate.api.nvidia.com/v1/chat/completions",
+                "deepseek-ai/deepseek-v4-pro-0813"
         );
 
         User user = User.builder()

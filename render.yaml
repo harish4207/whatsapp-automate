@@ -1,4 +1,4 @@
-﻿services:
+services:
   - type: web
     name: whatsapp-nutrition-bot
     runtime: docker
@@ -21,5 +21,9 @@
         sync: false
       - key: GEMINI_API_KEY_SECONDARY
         sync: false
+      - key: NVIDIA_NIM_API_KEY
+        sync: false
+      - key: NVIDIA_NIM_MODEL
+        value: deepseek-ai/deepseek-v4-pro-0813
       - key: APP_PUBLIC_BASE_URL
         sync: false

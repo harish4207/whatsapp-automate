@@ -378,12 +378,42 @@ public class OnboardingService {
         } else if (isFoodIntakeMessage(text)) {
             handleFoodIntakeLog(user, text);
         } else if (text != null && !text.isBlank()) {
-            log.info("Routing free-form nutrition inquiry to Gemini AI for user: {}", user.getPhoneNumber());
+            log.info("Routing free-form nutrition inquiry to AI Clinical Service for user: {}", user.getPhoneNumber());
+            
+            // Dynamic Care Memory Extraction: Check if user shared personal health struggles, cravings, or mood
+            updateUserCareMemory(user, text);
+
             String aiAnswer = geminiNutritionistService.askNutritionist(user, text);
             apiClient.sendTextMessage(user.getPhoneNumber(), aiAnswer);
         } else {
             apiClient.sendTextMessage(user.getPhoneNumber(), 
                     "Hello " + (user.getName() != null ? user.getName() : "") + "! Reply *PLAN* for today's meals, *WATER* to log hydration, send a *food photo* 📸 to scan calories, or ask any health question!");
+        }
+    }
+
+    private void updateUserCareMemory(User user, String text) {
+        String lower = text.toLowerCase();
+        boolean updated = false;
+
+        if (lower.contains("bloat") || lower.contains("gas") || lower.contains("stomach pain") || lower.contains("acidity")) {
+            user.setClinicalNotes("Recent digestion issue: reported " + (lower.contains("acidity") ? "acidity" : "bloating/gas"));
+            user.setLastMood("Digestion sensitive");
+            updated = true;
+        } else if (lower.contains("crav") || lower.contains("sweet") || lower.contains("sugar") || lower.contains("hungry")) {
+            user.setClinicalNotes("Experienced sweet/snack cravings: " + text.substring(0, Math.min(60, text.length())));
+            updated = true;
+        } else if (lower.contains("tired") || lower.contains("exhaust") || lower.contains("low energy") || lower.contains("weak")) {
+            user.setLastMood("Low energy / fatigued");
+            updated = true;
+        } else if (lower.contains("great") || lower.contains("energetic") || lower.contains("fresh") || lower.contains("active")) {
+            user.setLastMood("Energetic / Feeling good");
+            updated = true;
+        }
+
+        if (updated) {
+            userRepository.save(user);
+            log.info("Updated longitudinal care notes for user {}: notes='{}', mood='{}'", 
+                    user.getPhoneNumber(), user.getClinicalNotes(), user.getLastMood());
         }
     }
 

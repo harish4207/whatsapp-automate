@@ -24,27 +24,38 @@ public class GeminiNutritionistService {
     private final String apiUrl;
     private final String grokApiKey;
     private final String grokApiUrl;
+    private final String nvidiaApiKey;
+    private final String nvidiaApiUrl;
+    private final String nvidiaModel;
     private final boolean isEnabled;
 
     public GeminiNutritionistService(
             @Value("${gemini.api.key:}") String apiKey,
             @Value("${gemini.api.key.secondary:}") String secondaryApiKey,
-            @Value("${gemini.api.url:https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent}") String apiUrl,
+            @Value("${gemini.api.url:https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent}") String apiUrl,
             @Value("${grok.api.key:}") String grokApiKey,
-            @Value("${grok.api.url:https://api.x.ai/v1/chat/completions}") String grokApiUrl) {
+            @Value("${grok.api.url:https://api.x.ai/v1/chat/completions}") String grokApiUrl,
+            @Value("${nvidia.nim.api.key:}") String nvidiaApiKey,
+            @Value("${nvidia.nim.api.url:https://integrate.api.nvidia.com/v1/chat/completions}") String nvidiaApiUrl,
+            @Value("${nvidia.nim.model:deepseek-ai/deepseek-v4-pro-0813}") String nvidiaModel) {
 
         this.apiKey = apiKey;
         this.secondaryApiKey = secondaryApiKey;
         this.apiUrl = apiUrl;
         this.grokApiKey = grokApiKey;
         this.grokApiUrl = grokApiUrl;
-        this.isEnabled = (apiKey != null && !apiKey.trim().isEmpty()) || (secondaryApiKey != null && !secondaryApiKey.trim().isEmpty());
+        this.nvidiaApiKey = nvidiaApiKey;
+        this.nvidiaApiUrl = nvidiaApiUrl;
+        this.nvidiaModel = nvidiaModel;
+        this.isEnabled = (apiKey != null && !apiKey.trim().isEmpty()) 
+                || (secondaryApiKey != null && !secondaryApiKey.trim().isEmpty())
+                || (nvidiaApiKey != null && !nvidiaApiKey.trim().isEmpty());
         this.restClient = RestClient.builder().build();
 
         if (isEnabled) {
-            log.info("GeminiNutritionistService initialized with Primary + Secondary Gemini Failover & Grok Fallback.");
+            log.info("GeminiNutritionistService initialized with Primary + Secondary Gemini Failover & NVIDIA NIM (DeepSeek-v4-pro) backup.");
         } else {
-            log.warn("Gemini API key is not configured. Running GeminiNutritionistService in mock mode.");
+            log.warn("No AI API keys configured. Running GeminiNutritionistService in mock mode.");
         }
     }
 
@@ -68,12 +79,22 @@ public class GeminiNutritionistService {
                 )
         );
 
+        // 1. Try Primary + Secondary Gemini Flash
         String answer = executeWithFailover(requestPayload);
         if (answer != null) {
             return answer;
         }
 
-        // Optional Grok text fallback if Grok API key is configured
+        // 2. High-Performance NVIDIA NIM Failover (DeepSeek-v4-pro)
+        if (nvidiaApiKey != null && !nvidiaApiKey.isBlank()) {
+            log.info("Gemini unavailable. Failing over to NVIDIA NIM ({}) for user {}...", nvidiaModel, user.getPhoneNumber());
+            String nvidiaAnswer = callNvidiaNim(systemInstruction, userQuery);
+            if (nvidiaAnswer != null) {
+                return nvidiaAnswer;
+            }
+        }
+
+        // 3. Optional Grok text fallback if Grok API key is configured
         if (grokApiKey != null && !grokApiKey.isBlank()) {
             String grokAnswer = callGrok(systemInstruction, userQuery);
             if (grokAnswer != null) {
@@ -81,7 +102,7 @@ public class GeminiNutritionistService {
             }
         }
 
-        return "🩺 *Dr. Aanya*: I'm receiving high traffic right now! Please text *PLAN* for today's meals, or ask again in a moment.";
+        return "🩺 *Dr. Aanya*: I'm receiving very high traffic right now, but I'm right here with you! Please text *PLAN* to view today's meals, or try your question again in a moment.";
     }
 
     /**
@@ -255,34 +276,48 @@ public class GeminiNutritionistService {
 
     private String buildSystemInstruction(User user) {
         String name = user.getName() != null ? user.getName() : "Friend";
-        String goal = user.getGoal() != null ? user.getGoal() : "GENERAL_HEALTH";
+        String goal = user.getGoal() != null ? user.getGoal().replace("_", " ") : "GENERAL HEALTH";
         String condition = user.getHealthCondition() != null ? user.getHealthCondition() : "NONE";
-        String diet = user.getDietType() != null ? user.getDietType() : "ANY";
-        String cuisine = user.getCuisine() != null ? user.getCuisine() : "INDIAN";
+        String diet = user.getDietType() != null ? user.getDietType().replace("_", " ") : "ANY";
+        String cuisine = user.getCuisine() != null ? user.getCuisine().replace("_", " ") : "INDIAN";
+        String memoryNotes = user.getClinicalNotes() != null ? user.getClinicalNotes() : "None yet";
+        String lastMood = user.getLastMood() != null ? user.getLastMood() : "Normal";
+        int streak = user.getStreakDays() != null ? user.getStreakDays() : 1;
 
         return """
-            You are Dr. Aanya, a friendly, compassionate, and certified Clinical Nutritionist and Dietician specializing in Indian and regional cuisines.
+            You are Dr. Aanya, a dedicated, deeply compassionate, and clinically certified personal Nutritionist & Dietitian.
+            You are NOT a detached, cold bot or an generic AI search engine. You speak as a caring, attentive personal doctor who knows the patient personally.
             
-            Patient Profile:
+            PATIENT PERSONAL CLINICAL PROFILE:
             - Name: %s
             - Age: %s | Sex: %s | Height: %s cm | Weight: %s kg
             - Primary Fitness Goal: %s
             - Dietary Preference: %s | Preferred Cuisine: %s
             - Medical Condition: %s
+            - Ongoing Care Notes / Personal Struggles: %s
+            - Last Reported Mood / Sensation: %s
+            - Active Consistency Streak: %d days
             
-            NON-NEGOTIABLE CLINICAL SAFETY RULES:
-            1. If condition is DIABETES: Strictly avoid simple sugars, jaggery, honey, refined flour (maida), white potatoes, and high GI fruits (mangoes, chiku). Recommend high fiber, complex millets, and portion control.
-            2. If condition is HYPERTENSION: Keep sodium minimal. Avoid salted pickles, papads, packaged chips, and excessive table salt. Recommend potassium-rich greens.
-            3. If condition is THYROID: Ensure selenium & zinc rich foods (mushrooms, pumpkin seeds, eggs). Strictly avoid raw cruciferous vegetables (raw cabbage/broccoli) and heavy unfermented soy.
-            4. If condition is PCOS: Focus on anti-inflammatory, low-glycemic foods, spearmint tea, and cinnamon. Avoid heavy dairy and high-saturated fats.
-            5. If condition is FATTY_LIVER: Strictly limit saturated fats, deep-fried snacks, and sugary drinks. Emphasize cruciferous greens, antioxidants, and lean proteins.
+            CLINICAL CONCERN & EMPATHY GUIDELINES:
+            1. EMPATHY & EMOTIONAL REASSURANCE:
+               - Greet them warmly and acknowledge their personal situation.
+               - If they report having a cheat meal, binge eating, or snacking on sweets/fried food, NEVER scold or induce guilt. Validate that life happens, congratulate them on being honest, and gently advise how to balance their blood sugar/gut for the next meal (e.g. 15-min stroll, warm water with lemon/jeera, extra fiber).
+            2. LONGITUDINAL MEMORY:
+               - If they previously struggled with acidity, bloating, late-night sweet cravings, or work fatigue, proactively inquire about how their body is feeling today.
+            3. CRITICAL RED FLAG PROTOCOL:
+               - If the patient reports severe emergency symptoms (chest tightness, extreme hypoglycemia shakes < 60 mg/dL, dizziness/fainting, vomiting blood, breathlessness):
+               - IMMEDIATELY state clearly with 🚨 that their health and safety comes first, instruct them to sit down, drink glucose/water if diabetic, and urgently contact their local doctor or emergency services.
+            4. NON-NEGOTIABLE CLINICAL SAFETY RULES:
+               - DIABETES: Strictly avoid simple sugars, jaggery, honey, maida, white potatoes, and high-GI fruit juices. Prioritize fiber-rich lentils, methi, millets, and portion balance.
+               - HYPERTENSION: Keep sodium minimal. Advise rinsing or avoiding pickles/papads/chips. Promote potassium-rich greens & coconut water.
+               - THYROID: Ensure selenium & zinc (eggs, pumpkin seeds, soaked almonds). Strictly avoid raw cruciferous vegetables (raw cabbage/broccoli) and unfermented soy.
+               - PCOS: Emphasize anti-inflammatory meals, spearmint tea, cinnamon, and low glycemic index foods.
+               - FATTY LIVER: Avoid saturated fats and refined sugars. Recommend choline, cruciferous veggies, and liver-friendly turmeric/black pepper.
             
-            Formatting & Tone Instructions for WhatsApp:
-            - Respond in a warm, encouraging, conversational tone.
-            - Keep responses structured, concise, and easy to read on a mobile screen (use bolding, clean bullet points, and relevant emojis).
-            - Suggest realistic Indian kitchen ingredients with practical gram/cup measurements.
-            - If the user asks in Telugu or Hindi, reply naturally in that language.
-            - Keep your response under 150 words for optimal WhatsApp readability.
+            WHATSAPP TONE & READABILITY:
+            - Maximum 140 words so it is effortless to read on a mobile screen.
+            - Use friendly emojis (🩺, 💚, 🌿, ☀️, 💧) and clean WhatsApp bolding.
+            - If user speaks in Telugu, Hindi, or Hinglish, answer warmly with natural phrasing in that language.
             """.formatted(
                 name,
                 user.getAge() != null ? user.getAge() : "Adult",
@@ -292,7 +327,10 @@ public class GeminiNutritionistService {
                 goal,
                 diet,
                 cuisine,
-                condition
+                condition,
+                memoryNotes,
+                lastMood,
+                streak
         );
     }
 
@@ -360,6 +398,51 @@ public class GeminiNutritionistService {
             }
         }
 
+        return null;
+    }
+
+    /**
+     * NVIDIA NIM High-Performance LLM Failover.
+     * Uses OpenAI-compatible chat completions with DeepSeek-v4-pro or Llama-3.2.
+     */
+    private String callNvidiaNim(String systemInstruction, String userQuery) {
+        try {
+            log.info("Dispatching query to NVIDIA NIM ({}) via OpenAI-compatible endpoint...", nvidiaModel);
+            Map<String, Object> payload = Map.of(
+                    "model", nvidiaModel,
+                    "messages", List.of(
+                            Map.of("role", "system", "content", systemInstruction),
+                            Map.of("role", "user", "content", userQuery)
+                    ),
+                    "temperature", 0.6,
+                    "max_tokens", 500
+            );
+
+            Map response = restClient.post()
+                    .uri(nvidiaApiUrl)
+                    .header("Authorization", "Bearer " + nvidiaApiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(payload)
+                    .retrieve()
+                    .body(Map.class);
+
+            if (response != null && response.containsKey("choices")) {
+                List choices = (List) response.get("choices");
+                if (choices != null && !choices.isEmpty()) {
+                    Map firstChoice = (Map) choices.get(0);
+                    Map msg = (Map) firstChoice.get("message");
+                    if (msg != null && msg.containsKey("content")) {
+                        String content = (String) msg.get("content");
+                        if (content != null && !content.isBlank()) {
+                            log.info("NVIDIA NIM successfully answered query for user!");
+                            return content.trim();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("NVIDIA NIM API call failed: {}", e.getMessage());
+        }
         return null;
     }
 
