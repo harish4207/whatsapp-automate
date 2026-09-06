@@ -485,6 +485,15 @@ public class OnboardingService {
             apiClient.sendTextMessage(user.getPhoneNumber(), recipe);
         } else if (isFoodIntakeMessage(text)) {
             handleFoodIntakeLog(user, text);
+        } else if ("ASK_QUESTION".equals(actionId) || "QUESTIONS".equalsIgnoreCase(text) || "QUESTION".equalsIgnoreCase(text)) {
+            apiClient.sendTextMessage(user.getPhoneNumber(),
+                    "💬 *Coach Mohan is listening!*\n\n" +
+                    "Ask me anything about:\n" +
+                    "• What to eat for breakfast, lunch, or snacks 🥗\n" +
+                    "• Condition-safe foods for diabetes, thyroid, BP, or acidity 🩺\n" +
+                    "• Handling sweet cravings, late-night hunger, or low energy ⚡\n" +
+                    "• What to order when eating at restaurants 🍽️\n\n" +
+                    "Just type your question or hold the mic to send a voice note 🎙️ (in English, Telugu, or Hindi)!");
         } else if (isGreetingOrHelpMessage(text) || "HELP_MENU".equals(actionId)) {
             sendActiveUserFeatureShowcase(user);
         } else if (text != null && !text.isBlank()) {
@@ -782,6 +791,7 @@ public class OnboardingService {
                 4. 💧 *Hydration Tracker*: Reply *WATER* to log cups with visual progress bars.
                 5. 👩‍🍳 *Healthy Recipes*: Text *"Recipe <Dish>"* for condition-safe 4-step home cooking.
                 6. 🔄 *Meal Swapping*: One-tap custom swaps to keep your diet exciting and sustainable.
+                7. 💬 *Personal Health & Diet Q&A*: Ask me ANY question about what to eat, cravings, sugar balance, or acidity!
                 
                 ━━━━━━━━━━━━━━━━━━━━
                 🌱 *Let's personalize your daily routine (Takes 30 seconds)!*
@@ -826,9 +836,11 @@ public class OnboardingService {
                 "3. 📝 *Natural Calorie Logger*: Text *\"I ate 2 idlis\"* or *\"Had chicken curry\"* to auto-log.\n" +
                 "4. 💧 *Hydration Tracker*: Reply *WATER* to log cups with visual progress bars.\n" +
                 "5. 👩‍🍳 *Healthy Recipes*: Text *\"Recipe <Dish>\"* for condition-safe 4-step cooking.\n" +
-                "6. 🔄 *Meal Swapping*: One-tap custom swaps to keep your diet exciting.\n\n" +
+                "6. 🔄 *Meal Swapping*: One-tap custom swaps to keep your diet exciting.\n" +
+                "7. 💬 *Personal Health & Diet Q&A*: Ask me ANY question about your food choices, symptoms, cravings, acidity, or what to order when dining out!\n\n" +
                 "━━━━━━━━━━━━━━━━━━━━\n" +
-                "How would you like to take care of your body right now?",
+                "How would you like to take care of your body right now?\n" +
+                "👉 *Tap a quick button below, or simply type ANY health or diet question to ask me right now:*",
                 name
         );
 

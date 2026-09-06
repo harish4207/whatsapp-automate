@@ -115,7 +115,7 @@ public class GeminiNutritionistService {
             }
         }
 
-        return "🩺 *Dr. Mohan*: I'm receiving very high traffic right now, but I'm right here with you! Please text *PLAN* to view today's meals, or try your question again in a moment.";
+        return "🩺 *Coach Mohan*: I'm receiving very high traffic right now, but I'm right here with you! Please text *PLAN* to view today's meals, or try your question again in a moment.";
     }
 
     /**
@@ -133,7 +133,7 @@ public class GeminiNutritionistService {
             String actualMime = (mimeType != null && !mimeType.isBlank()) ? mimeType : "image/jpeg";
 
             String prompt = """
-                You are Dr. Mohan, an expert Indian Clinical Nutritionist analyzing this meal photo sent by your patient.
+                You are Coach Mohan, an expert Indian Health & Nutrition Coach analyzing this meal photo sent by your member.
                 
                 Patient Clinical Profile:
                 - Goal: %s
@@ -236,7 +236,7 @@ public class GeminiNutritionistService {
                 return answer;
             }
 
-            return "🎙️ *Dr. Mohan*: I listened to your voice message! Keep your meals balanced and rich in fiber. Text *PLAN* anytime for today's meals.";
+            return "🎙️ *Coach Mohan*: I listened to your voice message! Keep your meals balanced and rich in fiber. Text *PLAN* anytime for today's meals.";
 
         } catch (Exception e) {
             log.error("Failed to analyze voice note with Gemini: {}", e.getMessage(), e);
@@ -507,7 +507,7 @@ public class GeminiNutritionistService {
     }
 
     private String getMockResponse(User user, String query) {
-        return "🩺 *Dr. Mohan (AI Nutritionist)*:\n\n" +
+        return "🩺 *Coach Mohan (Healthyday)*:\n\n" +
                 "That's a great question regarding: \"" + query + "\"!\n\n" +
                 "• For your *" + (user.getGoal() != null ? user.getGoal() : "Health") + "* goal, prioritize balanced protein and fresh fiber.\n" +
                 "• Health Shield: Keep your *" + (user.getHealthCondition() != null ? user.getHealthCondition() : "General Fitness") + "* safe with clean home-cooked portions.\n\n" +

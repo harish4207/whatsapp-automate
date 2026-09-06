@@ -33,7 +33,7 @@ class GeminiNutritionistServiceTest {
         String answer = service.askNutritionist(user, "Can I eat biryani?");
 
         assertNotNull(answer);
-        assertTrue(answer.contains("Dr. Mohan"));
+        assertTrue(answer.contains("Coach Mohan"));
         assertTrue(answer.contains("FAT_LOSS"));
     }
 
