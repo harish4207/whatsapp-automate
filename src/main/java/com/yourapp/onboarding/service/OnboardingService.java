@@ -37,6 +37,7 @@ public class OnboardingService {
     private final com.yourapp.nutrition.service.DailyPlanService dailyPlanService;
     private final com.yourapp.ai.GeminiNutritionistService geminiNutritionistService;
     private final com.yourapp.nutrition.repository.DailyProgressRepository progressRepository;
+    private final com.yourapp.whatsapp.repository.MessageLogRepository messageLogRepository;
 
     private static final Pattern VITALS_PATTERN = Pattern.compile("(\\d{1,3})\\s*[,\\s]\\s*(\\d{2,3})\\s*(?:cm)?\\s*[,\\s]\\s*(\\d{2,3})\\s*(?:kg)?", Pattern.CASE_INSENSITIVE);
 
@@ -348,6 +349,10 @@ public class OnboardingService {
             handleVoiceNoteUpload(user, message);
         } else if ("PLAN".equalsIgnoreCase(text) || "TODAY".equalsIgnoreCase(text)) {
             dailyPlanService.generateDailyPlan(user, java.time.LocalDate.now());
+        } else if ("YOGA".equalsIgnoreCase(text) || "YOGA_MENU".equals(actionId)) {
+            sendHealthydayYogaRoutine(user);
+        } else if ("BREATH".equalsIgnoreCase(text) || "BREATHWORK".equalsIgnoreCase(text) || "BREATH_MENU".equals(actionId)) {
+            sendHealthydayBreathwork(user);
         } else if ("WATER_MENU".equals(actionId) || "WATER".equalsIgnoreCase(text)) {
             sendWaterTracker(user);
         } else if ("WATER_ADD_250".equals(actionId)) {
@@ -370,6 +375,8 @@ public class OnboardingService {
             dailyPlanService.sendShoppingList(user);
         } else if ("MARK_DONE".equals(actionId)) {
             logMealCompletion(user);
+        } else if ("YOGA_COMPLETE".equals(actionId)) {
+            logYogaCompletion(user);
         } else if (text != null && text.trim().toLowerCase().startsWith("recipe ")) {
             String mealDish = text.substring(7).trim();
             apiClient.sendTextMessage(user.getPhoneNumber(), "👩‍🍳 *Dr. Aanya's Healthy Kitchen*:\nPreparing healthy clinical recipe for *" + mealDish + "*...");
@@ -383,7 +390,10 @@ public class OnboardingService {
             // Dynamic Care Memory Extraction: Check if user shared personal health struggles, cravings, or mood
             updateUserCareMemory(user, text);
 
-            String aiAnswer = geminiNutritionistService.askNutritionist(user, text);
+            // Fetch recent conversation history so the AI remembers prior turns seamlessly
+            String historySummary = buildRecentConversationHistory(user.getPhoneNumber());
+
+            String aiAnswer = geminiNutritionistService.askNutritionist(user, text, historySummary);
             apiClient.sendTextMessage(user.getPhoneNumber(), aiAnswer);
         } else {
             apiClient.sendTextMessage(user.getPhoneNumber(), 
@@ -414,6 +424,29 @@ public class OnboardingService {
             userRepository.save(user);
             log.info("Updated longitudinal care notes for user {}: notes='{}', mood='{}'", 
                     user.getPhoneNumber(), user.getClinicalNotes(), user.getLastMood());
+        }
+    }
+
+    private String buildRecentConversationHistory(String phoneNumber) {
+        try {
+            var recentLogs = messageLogRepository.findTop10ByPhoneNumberOrderByCreatedAtDesc(phoneNumber);
+            if (recentLogs == null || recentLogs.isEmpty()) return null;
+
+            StringBuilder sb = new StringBuilder();
+            // Reverse so it's in chronological order
+            var reversed = new java.util.ArrayList<>(recentLogs);
+            java.util.Collections.reverse(reversed);
+
+            for (var logEntry : reversed) {
+                if (logEntry.getPayloadPreview() != null && !logEntry.getPayloadPreview().isBlank()) {
+                    String speaker = "INBOUND".equalsIgnoreCase(logEntry.getDirection()) ? "User" : "Coach Aanya";
+                    sb.append(speaker).append(": ").append(logEntry.getPayloadPreview()).append("\n");
+                }
+            }
+            return sb.toString().trim();
+        } catch (Exception e) {
+            log.warn("Could not retrieve conversation history: {}", e.getMessage());
+            return null;
         }
     }
 
@@ -516,6 +549,71 @@ public class OnboardingService {
                 "🎉 *Meal Logged!* You've completed " + completed + " meals today.\n" +
                 "Consistency is key to transforming your metabolism and clinical health! 🔥\n\n" +
                 "💡 Reply *WATER* to log hydration or send a *food photo* 📸 to scan calories!");
+    }
+
+    private void sendHealthydayYogaRoutine(User user) {
+        int currentDay = user.getYogaProgramDay() != null ? user.getYogaProgramDay() : 1;
+        String name = user.getName() != null && !user.getName().isBlank() ? user.getName() : "Friend";
+
+        String[] routines = {
+                "🌅 *Day 1: Awakening Energy*\n• Surya Namaskar (3 gentle rounds)\n• Tadasana (Mountain Pose - 1 min)\n• Vrikshasana (Tree Pose - 30s each leg)\n• Focus: Spine alignment & deep belly breathing.",
+                "🧘 *Day 2: Digestion & Core Awakening*\n• Vajrasana (Thunderbolt Pose - 3 mins)\n• Pawanmuktasana (Wind-relieving Pose)\n• Marjaryasana (Cat-Cow Stretch)\n• Focus: Gut relief & metabolic firing.",
+                "🌿 *Day 3: Lower Back & Hip Mobility*\n• Bhujangasana (Gentle Cobra - 3 reps)\n• Setu Bandhasana (Bridge Pose)\n• Balasana (Child's Pose - 2 mins)\n• Focus: Releasing work-desk tension.",
+                "✨ *Day 4: Restorative Balance & Detox*\n• Ardha Matsyendrasana (Spinal Twist)\n• Baddha Konasana (Butterfly Pose)\n• Viparita Karani (Legs-up-the-wall - 5 mins)\n• Focus: Lymphatic circulation & nervous calm."
+        };
+
+        String routine = routines[(currentDay - 1) % routines.length];
+
+        String body = String.format(
+                "🧘 *HEALTHYDAY 14-DAY YOGA PROGRAM (Day %d/14)* 🌿\n\n" +
+                "Hi %s! Today's session is curated to match your *%s* profile:\n\n" +
+                "%s\n\n" +
+                "💡 *Yogic Tip:* Drink 1 glass of room-temperature water. Practice on an empty stomach.\n\n" +
+                "Tap below once you finish your practice today:",
+                currentDay, name, user.getHealthCondition() != null ? user.getHealthCondition() : "Fitness", routine
+        );
+
+        apiClient.sendButtonMessage(user.getPhoneNumber(), body, List.of(
+                ButtonOption.builder().id("YOGA_COMPLETE").title("✅ Completed Day " + currentDay).build(),
+                ButtonOption.builder().id("BREATH_MENU").title("💨 3-Min Breathwork").build()
+        ));
+    }
+
+    private void sendHealthydayBreathwork(User user) {
+        String body = """
+                💨 *HEALTHYDAY PRANAYAMA & BREATHWORK* 🌸
+                
+                Reset your nervous system in 3 minutes:
+                
+                1. 🌿 *Anulom Vilom (Alternate Nostril)*:
+                   • Close right nostril, inhale through left (4 sec)
+                   • Close left, exhale through right (4 sec)
+                   • Inhale through right, exhale through left
+                   • Repeat for 5 rounds.
+                
+                2. 🌊 *Benefits*:
+                   • Lowers cortisol & balances systolic BP
+                   • Regulates appetite and eliminates craving impulses
+                   • Deep oxygenation for brain clarity
+                
+                Feel the calm settle in! ✨ Reply *PLAN* anytime for today's meals.
+                """;
+        apiClient.sendTextMessage(user.getPhoneNumber(), body);
+    }
+
+    private void logYogaCompletion(User user) {
+        int currentDay = user.getYogaProgramDay() != null ? user.getYogaProgramDay() : 1;
+        int nextDay = Math.min(14, currentDay + 1);
+        user.setYogaProgramDay(nextDay);
+        int streak = (user.getStreakDays() != null ? user.getStreakDays() : 0) + 1;
+        user.setStreakDays(streak);
+        userRepository.save(user);
+
+        apiClient.sendTextMessage(user.getPhoneNumber(),
+                "🎉 *Namaste " + (user.getName() != null ? user.getName() : "") + "! Day " + currentDay + " Yoga Completed!* 🧘‍♀️\n\n" +
+                "🔥 *Consistency Streak:* " + streak + " Days Active!\n" +
+                "You've advanced to *Day " + nextDay + "* of your Healthyday 14-Day Journey.\n\n" +
+                "Nourish your body now with post-yoga hydration. Reply *PLAN* to view your recovery meals!");
     }
 
     private boolean isFoodIntakeMessage(String text) {

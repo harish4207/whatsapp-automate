@@ -77,14 +77,14 @@ public class NutritionCardRenderer {
     }
 
     private void renderHeader(Graphics2D g2, User user, MealPlan plan) {
-        // Tagline badge
-        g2.setColor(new Color(16, 185, 129, 35));
-        g2.fill(new RoundRectangle2D.Float(50, 36, 310, 32, 16, 16));
-        g2.setColor(new Color(52, 211, 153));
+        // Healthyday Brand Badge (Warm golden/amber branding from Healthyday website)
+        g2.setColor(new Color(245, 158, 11, 40));
+        g2.fill(new RoundRectangle2D.Float(50, 36, 360, 32, 16, 16));
+        g2.setColor(new Color(251, 191, 36));
         g2.setStroke(new BasicStroke(1.0f));
-        g2.draw(new RoundRectangle2D.Float(50, 36, 310, 32, 16, 16));
+        g2.draw(new RoundRectangle2D.Float(50, 36, 360, 32, 16, 16));
         g2.setFont(new Font("SansSerif", Font.BOLD, 12));
-        g2.drawString("● CLINICALLY BACKED NUTRITION", 65, 57);
+        g2.drawString("✨ HEALTHYDAY • HEALTH. HAPPINESS. COMMUNITY.", 65, 57);
 
         // Date on right with calendar icon accent
         String dateStr = plan.getPlanDate() != null ? 

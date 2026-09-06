@@ -12,4 +12,6 @@ public interface MessageLogRepository extends JpaRepository<MessageLog, Long> {
     boolean existsByMessageId(String messageId);
 
     Optional<MessageLog> findByMessageId(String messageId);
+
+    java.util.List<MessageLog> findTop10ByPhoneNumberOrderByCreatedAtDesc(String phoneNumber);
 }

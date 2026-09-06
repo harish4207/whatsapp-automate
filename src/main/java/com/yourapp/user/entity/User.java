@@ -66,6 +66,10 @@ public class User {
     private Integer streakDays = 1; // Consecutive days active/logged
 
     @Builder.Default
+    @Column(name = "yoga_program_day")
+    private Integer yogaProgramDay = 1; // Healthyday 14-Day Free Yoga Program tracker (Day 1 to 14)
+
+    @Builder.Default
     private Boolean active = true;
 
     @CreationTimestamp
