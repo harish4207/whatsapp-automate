@@ -238,12 +238,12 @@ public class DailyPlanService {
         sb.append("━━━━━━━━━━━━━━━━━━━━\n");
         
         String doctorNote = switch (user.getHealthCondition() != null ? user.getHealthCondition() : "NONE") {
-            case "DIABETES" -> "🩺 *Dr. Aanya's Advice:* Prioritize whole pulses & millets. Take a brisk 10-min stroll after lunch to keep sugar flat.";
-            case "HYPERTENSION" -> "🩺 *Dr. Aanya's Advice:* Keep extra salt away from the dining table. Stay well hydrated with coconut water or lime water.";
-            case "THYROID" -> "🩺 *Dr. Aanya's Advice:* High zinc & selenium sources added today. Remember medication on an empty stomach.";
-            case "PCOS" -> "🩺 *Dr. Aanya's Advice:* Anti-inflammatory choices selected. Enjoy a cup of warm spearmint/cinnamon tea this afternoon.";
-            case "FATTY_LIVER" -> "🩺 *Dr. Aanya's Advice:* Clean antioxidants and lean proteins picked to support your liver enzymes.";
-            default -> "🩺 *Dr. Aanya's Advice:* You're building steady consistency! Sip water before meals and listen to your body's satiety cues.";
+            case "DIABETES" -> "🩺 *Dr. Mohan's Advice:* Prioritize whole pulses & millets. Take a brisk 10-min stroll after lunch to keep sugar flat.";
+            case "HYPERTENSION" -> "🩺 *Dr. Mohan's Advice:* Keep extra salt away from the dining table. Stay well hydrated with coconut water or lime water.";
+            case "THYROID" -> "🩺 *Dr. Mohan's Advice:* High zinc & selenium sources added today. Remember medication on an empty stomach.";
+            case "PCOS" -> "🩺 *Dr. Mohan's Advice:* Anti-inflammatory choices selected. Enjoy a cup of warm spearmint/cinnamon tea this afternoon.";
+            case "FATTY_LIVER" -> "🩺 *Dr. Mohan's Advice:* Clean antioxidants and lean proteins picked to support your liver enzymes.";
+            default -> "🩺 *Dr. Mohan's Advice:* You're building steady consistency! Sip water before meals and listen to your body's satiety cues.";
         };
         sb.append(doctorNote).append("\n\n");
         sb.append("👇 *Quick Actions:* Swap meals, check groceries, or tap *Completed* when done:");

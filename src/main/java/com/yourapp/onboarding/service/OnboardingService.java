@@ -308,7 +308,7 @@ public class OnboardingService {
                 "🥗 *Diet Style:* %s (%s cuisine)\n" +
                 "🛡️ *Clinical Shield:* %s\n" +
                 "━━━━━━━━━━━━━━━━━━━━\n" +
-                "🌿 *Your personal Healthyday Coach Aanya is compiling your Day 1 Blueprint now...*",
+                "🌿 *Your personal Healthyday Coach Mohan is compiling your Day 1 Blueprint now...*",
                 user.getName() != null ? user.getName() : "Friend",
                 user.getGoal() != null ? user.getGoal().replace("_", " ") : "BALANCED HEALTH",
                 user.getAge(),
@@ -368,7 +368,7 @@ public class OnboardingService {
             logMealCompletion(user);
         } else if (text != null && text.trim().toLowerCase().startsWith("recipe ")) {
             String mealDish = text.substring(7).trim();
-            apiClient.sendTextMessage(user.getPhoneNumber(), "👩‍🍳 *Dr. Aanya's Healthy Kitchen*:\nPreparing healthy clinical recipe for *" + mealDish + "*...");
+            apiClient.sendTextMessage(user.getPhoneNumber(), "👨‍🍳 *Dr. Mohan's Healthy Kitchen*:\nPreparing healthy clinical recipe for *" + mealDish + "*...");
             String recipe = geminiNutritionistService.generateRecipe(user, mealDish);
             apiClient.sendTextMessage(user.getPhoneNumber(), recipe);
         } else if (isFoodIntakeMessage(text)) {
@@ -465,7 +465,7 @@ public class OnboardingService {
 
             for (var logEntry : reversed) {
                 if (logEntry.getPayloadPreview() != null && !logEntry.getPayloadPreview().isBlank()) {
-                    String speaker = "INBOUND".equalsIgnoreCase(logEntry.getDirection()) ? "User" : "Coach Aanya";
+                    String speaker = "INBOUND".equalsIgnoreCase(logEntry.getDirection()) ? "User" : "Coach Mohan";
                     sb.append(speaker).append(": ").append(logEntry.getPayloadPreview()).append("\n");
                 }
             }
@@ -482,7 +482,7 @@ public class OnboardingService {
         String caption = message.getImage().getCaption();
 
         log.info("Processing meal photo for user {}. Media ID: {}", user.getPhoneNumber(), mediaId);
-        apiClient.sendTextMessage(user.getPhoneNumber(), "📸 *Dr. Aanya is analyzing your meal photo...* Analyzing portion sizes & nutritional macros...");
+        apiClient.sendTextMessage(user.getPhoneNumber(), "📸 *Dr. Mohan is analyzing your meal photo...* Analyzing portion sizes & nutritional macros...");
 
         byte[] imageBytes = apiClient.downloadMedia(mediaId);
         if (imageBytes == null || imageBytes.length == 0) {
@@ -499,7 +499,7 @@ public class OnboardingService {
         String mimeType = message.getAudio().getMime_type();
 
         log.info("Processing voice note for user {}. Media ID: {}, Mime: {}", user.getPhoneNumber(), mediaId, mimeType);
-        apiClient.sendTextMessage(user.getPhoneNumber(), "🎙️ *Dr. Aanya is listening to your voice note...* One moment please!");
+        apiClient.sendTextMessage(user.getPhoneNumber(), "🎙️ *Dr. Mohan is listening to your voice note...* One moment please!");
 
         byte[] audioBytes = apiClient.downloadMedia(mediaId);
         if (audioBytes == null || audioBytes.length == 0) {
@@ -649,7 +649,7 @@ public class OnboardingService {
                 ✨ *WELCOME TO HEALTHYDAY!* ✨
                 *Health. Happiness. Community.*
                 ━━━━━━━━━━━━━━━━━━━━
-                Namaste! I am *Aanya*, your dedicated Healthyday Health & Nutrition Coach.
+                Namaste! I am *Mohan*, your dedicated Healthyday Health & Nutrition Coach.
                 
                 Here is everything I do for you right here on WhatsApp:
                 

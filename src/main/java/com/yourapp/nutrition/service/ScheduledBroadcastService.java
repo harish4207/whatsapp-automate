@@ -79,7 +79,7 @@ public class ScheduledBroadcastService {
                 String msg = String.format(
                         "☕ *Hi %s, it's 4:30 PM tea time!* 🌿\n\n" +
                         "This is usually when energy dips and cravings for biscuits or fried snacks sneak in.\n\n" +
-                        "💡 *Dr. Aanya's Quick Shield:*\n" +
+                        "💡 *Dr. Mohan's Quick Shield:*\n" +
                         "• Swap biscuits for roasted makhana, boiled chana, or a handful of almonds.\n" +
                         "• Drink a glass of water first — mild dehydration often masquerades as sugar cravings!\n\n" +
                         "How is your energy feeling right now? Reply *WATER* to check hydration or send a photo 📸 of your snack!",
@@ -113,7 +113,7 @@ public class ScheduledBroadcastService {
                         "🛌 *Tonight's Recovery Note:*\n" +
                         "• Avoid screens 30 mins before sleep to support deep metabolic melatonin.\n" +
                         "• Keep dinner light and finish with warm water or chamomile/jeera tea.\n\n" +
-                        "Rest well and recharge. Dr. Aanya will have your fresh nutrition plan ready at 7:30 AM tomorrow!",
+                        "Rest well and recharge. Dr. Mohan will have your fresh nutrition plan ready at 7:30 AM tomorrow!",
                         name
                 );
                 com.yourapp.whatsapp.client.WhatsAppApiClient client = dailyPlanService.getApiClient();

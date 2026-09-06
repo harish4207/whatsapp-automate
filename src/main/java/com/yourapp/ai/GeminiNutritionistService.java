@@ -37,7 +37,7 @@ public class GeminiNutritionistService {
             @Value("${grok.api.url:https://api.x.ai/v1/chat/completions}") String grokApiUrl,
             @Value("${nvidia.nim.api.key:}") String nvidiaApiKey,
             @Value("${nvidia.nim.api.url:https://integrate.api.nvidia.com/v1/chat/completions}") String nvidiaApiUrl,
-            @Value("${nvidia.nim.model:deepseek-ai/deepseek-v4-pro-0813}") String nvidiaModel) {
+            @Value("${nvidia.nim.model:meta/llama-3.2-11b-vision-instruct}") String nvidiaModel) {
 
         this.apiKey = apiKey;
         this.secondaryApiKey = secondaryApiKey;
@@ -50,10 +50,14 @@ public class GeminiNutritionistService {
         this.isEnabled = (apiKey != null && !apiKey.trim().isEmpty()) 
                 || (secondaryApiKey != null && !secondaryApiKey.trim().isEmpty())
                 || (nvidiaApiKey != null && !nvidiaApiKey.trim().isEmpty());
-        this.restClient = RestClient.builder().build();
+        
+        var requestFactory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(5000);
+        requestFactory.setReadTimeout(15000);
+        this.restClient = RestClient.builder().requestFactory(requestFactory).build();
 
         if (isEnabled) {
-            log.info("GeminiNutritionistService initialized with Primary + Secondary Gemini Failover & NVIDIA NIM (DeepSeek-v4-pro) backup.");
+            log.info("GeminiNutritionistService initialized with Primary + Secondary Gemini Failover & NVIDIA NIM ({}) backup.", nvidiaModel);
         } else {
             log.warn("No AI API keys configured. Running GeminiNutritionistService in mock mode.");
         }
@@ -111,7 +115,7 @@ public class GeminiNutritionistService {
             }
         }
 
-        return "🩺 *Dr. Aanya*: I'm receiving very high traffic right now, but I'm right here with you! Please text *PLAN* to view today's meals, or try your question again in a moment.";
+        return "🩺 *Dr. Mohan*: I'm receiving very high traffic right now, but I'm right here with you! Please text *PLAN* to view today's meals, or try your question again in a moment.";
     }
 
     /**
@@ -129,7 +133,7 @@ public class GeminiNutritionistService {
             String actualMime = (mimeType != null && !mimeType.isBlank()) ? mimeType : "image/jpeg";
 
             String prompt = """
-                You are Dr. Aanya, an expert Indian Clinical Nutritionist analyzing this meal photo sent by your patient.
+                You are Dr. Mohan, an expert Indian Clinical Nutritionist analyzing this meal photo sent by your patient.
                 
                 Patient Clinical Profile:
                 - Goal: %s
@@ -232,7 +236,7 @@ public class GeminiNutritionistService {
                 return answer;
             }
 
-            return "🎙️ *Dr. Aanya*: I listened to your voice message! Keep your meals balanced and rich in fiber. Text *PLAN* anytime for today's meals.";
+            return "🎙️ *Dr. Mohan*: I listened to your voice message! Keep your meals balanced and rich in fiber. Text *PLAN* anytime for today's meals.";
 
         } catch (Exception e) {
             log.error("Failed to analyze voice note with Gemini: {}", e.getMessage(), e);
@@ -309,7 +313,7 @@ public class GeminiNutritionistService {
         int streak = user.getStreakDays() != null ? user.getStreakDays() : 1;
 
         return """
-            You are Aanya, your patient's personal Health & Nutrition Coach from Healthyday ("Health. Happiness. Community.").
+            You are Mohan, your patient's personal Health & Nutrition Coach from Healthyday ("Health. Happiness. Community.").
             You help them build a joyful daily health routine through Mindful Indian Nutrition, Active Hydration, and Restorative Wellness.
             You are warm, attentive, authentic, and genuinely interested in their well-being.
             
@@ -439,7 +443,9 @@ public class GeminiNutritionistService {
             Map response = restClient.post()
                     .uri(nvidiaApiUrl)
                     .header("Authorization", "Bearer " + nvidiaApiKey)
+                    .header("User-Agent", "Healthyday-WhatsApp/1.0")
                     .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
                     .body(payload)
                     .retrieve()
                     .body(Map.class);
@@ -501,7 +507,7 @@ public class GeminiNutritionistService {
     }
 
     private String getMockResponse(User user, String query) {
-        return "🩺 *Dr. Aanya (AI Nutritionist)*:\n\n" +
+        return "🩺 *Dr. Mohan (AI Nutritionist)*:\n\n" +
                 "That's a great question regarding: \"" + query + "\"!\n\n" +
                 "• For your *" + (user.getGoal() != null ? user.getGoal() : "Health") + "* goal, prioritize balanced protein and fresh fiber.\n" +
                 "• Health Shield: Keep your *" + (user.getHealthCondition() != null ? user.getHealthCondition() : "General Fitness") + "* safe with clean home-cooked portions.\n\n" +

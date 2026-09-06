@@ -24,6 +24,6 @@ services:
       - key: NVIDIA_NIM_API_KEY
         sync: false
       - key: NVIDIA_NIM_MODEL
-        value: deepseek-ai/deepseek-v4-pro-0813
+        value: meta/llama-3.2-11b-vision-instruct
       - key: APP_PUBLIC_BASE_URL
         sync: false
