@@ -323,7 +323,6 @@ public class GeminiNutritionistService {
             - Personal Struggles & Preferences Memory: %s
             - Last Reported Mood / Sensation: %s
             - Current Consistency Streak: %d days
-            - Healthyday 14-Day Free Yoga Journey: Currently on Day %d
             
             HEALTHYDAY HOLISTIC COACHING PRINCIPLES:
             1. FULL CONVERSATIONAL RECALL:
@@ -352,8 +351,7 @@ public class GeminiNutritionistService {
                 condition,
                 memoryNotes,
                 lastMood,
-                streak,
-                yogaDay
+                streak
         );
     }
 

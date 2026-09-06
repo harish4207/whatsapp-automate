@@ -368,8 +368,6 @@ public class OnboardingService {
             dailyPlanService.sendShoppingList(user);
         } else if ("MARK_DONE".equals(actionId)) {
             logMealCompletion(user);
-        } else if ("YOGA_COMPLETE".equals(actionId)) {
-            logYogaCompletion(user);
         } else if (text != null && text.trim().toLowerCase().startsWith("recipe ")) {
             String mealDish = text.substring(7).trim();
             apiClient.sendTextMessage(user.getPhoneNumber(), "👩‍🍳 *Dr. Aanya's Healthy Kitchen*:\nPreparing healthy clinical recipe for *" + mealDish + "*...");
@@ -582,30 +580,60 @@ public class OnboardingService {
     }
 
     private void sendHealthydayYogaRoutine(User user) {
-        int currentDay = user.getYogaProgramDay() != null ? user.getYogaProgramDay() : 1;
         String name = user.getName() != null && !user.getName().isBlank() ? user.getName() : "Friend";
+        String condition = user.getHealthCondition() != null ? user.getHealthCondition().toUpperCase() : "NONE";
 
-        String[] routines = {
-                "🌅 *Day 1: Awakening Energy*\n• Surya Namaskar (3 gentle rounds)\n• Tadasana (Mountain Pose - 1 min)\n• Vrikshasana (Tree Pose - 30s each leg)\n• Focus: Spine alignment & deep belly breathing.",
-                "🧘 *Day 2: Digestion & Core Awakening*\n• Vajrasana (Thunderbolt Pose - 3 mins)\n• Pawanmuktasana (Wind-relieving Pose)\n• Marjaryasana (Cat-Cow Stretch)\n• Focus: Gut relief & metabolic firing.",
-                "🌿 *Day 3: Lower Back & Hip Mobility*\n• Bhujangasana (Gentle Cobra - 3 reps)\n• Setu Bandhasana (Bridge Pose)\n• Balasana (Child's Pose - 2 mins)\n• Focus: Releasing work-desk tension.",
-                "✨ *Day 4: Restorative Balance & Detox*\n• Ardha Matsyendrasana (Spinal Twist)\n• Baddha Konasana (Butterfly Pose)\n• Viparita Karani (Legs-up-the-wall - 5 mins)\n• Focus: Lymphatic circulation & nervous calm."
+        String yogaSequence = switch (condition) {
+            case "DIABETES" -> """
+                    • *Mandukasana (Frog Pose)*: 3 rounds (activates pancreas & insulin receptors)
+                    • *Paschimottanasana (Seated Forward Bend)*: 2 mins
+                    • *Vajrasana (Thunderbolt)*: 5 mins after meals for digestion
+                    • *Kapalbhati Pranayama*: 3 rounds of 30 strokes
+                    """;
+            case "HYPERTENSION" -> """
+                    • *Shavasana with Deep Diaphragmatic Breath*: 5 mins
+                    • *Anulom Vilom (Alternate Nostril)*: 5 mins (lowers systolic pressure)
+                    • *Setu Bandhasana (Bridge Pose)*: 3 slow gentle reps
+                    • *Balasana (Child's Pose)*: 3 mins to calm the central nervous system
+                    """;
+            case "THYROID" -> """
+                    • *Sarvangasana (Shoulder Stand)* or *Viparita Karani (Legs-up-the-wall)*: 3 mins
+                    • *Matsyasana (Fish Pose)*: Stimulates thyroid & parathyroid glands
+                    • *Ujjayi Breath*: 5 mins deep ocean breath
+                    • *Bhujangasana (Cobra Pose)*: 3 gentle reps
+                    """;
+            case "PCOS" -> """
+                    • *Baddha Konasana (Butterfly Pose)*: 3 mins (stimulates ovaries & pelvis)
+                    • *Supta Baddha Konasana (Reclining Butterfly)*: 5 mins
+                    • *Bhujangasana (Cobra Pose)*: 3 reps for endocrine balance
+                    • *Nadi Shodhana Pranayama*: 5 mins hormone soothing
+                    """;
+            case "FATTY_LIVER" -> """
+                    • *Ardha Matsyendrasana (Spinal Twist)*: Compresses and detoxifies hepatic tissue
+                    • *Dhanurasana (Bow Pose)*: 3 reps for abdominal blood circulation
+                    • *Pawanmuktasana (Wind-Relieving Pose)*: 2 mins each leg
+                    • *Anulom Vilom*: 5 mins
+                    """;
+            default -> """
+                    • *Surya Namaskar (Sun Salutations)*: 4 to 6 mindful rounds
+                    • *Trikonasana (Triangle Pose)*: 1 min each side
+                    • *Vajrasana (Thunderbolt Pose)*: 3 mins post-meals
+                    • *Anulom Vilom Pranayama*: 5 mins for clarity & focus
+                    """;
         };
 
-        String routine = routines[(currentDay - 1) % routines.length];
-
         String body = String.format(
-                "🧘 *HEALTHYDAY 14-DAY YOGA PROGRAM (Day %d/14)* 🌿\n\n" +
-                "Hi %s! Today's session is curated to match your *%s* profile:\n\n" +
-                "%s\n\n" +
-                "💡 *Yogic Tip:* Drink 1 glass of room-temperature water. Practice on an empty stomach.\n\n" +
-                "Tap below once you finish your practice today:",
-                currentDay, name, user.getHealthCondition() != null ? user.getHealthCondition() : "Fitness", routine
+                "🧘 *HEALTHYDAY YOGA & ASANA REFERENCE GUIDE* 🌿\n\n" +
+                "Namaste %s! Here is your curated yoga sequence designed specifically for your *%s* profile:\n\n" +
+                "%s\n" +
+                "💡 *Yogic Guidance:* Practice on an empty stomach or 2.5 hours after food. Sip warm water.\n\n" +
+                "Feel the energy flow through your body! ✨ Tap below for calming breathwork or return to your plan:",
+                name, user.getHealthCondition() != null ? user.getHealthCondition() : "Fitness", yogaSequence
         );
 
         apiClient.sendButtonMessage(user.getPhoneNumber(), body, List.of(
-                ButtonOption.builder().id("YOGA_COMPLETE").title("✅ Completed Day " + currentDay).build(),
-                ButtonOption.builder().id("BREATH_MENU").title("💨 3-Min Breathwork").build()
+                ButtonOption.builder().id("BREATH_MENU").title("💨 3-Min Breathwork").build(),
+                ButtonOption.builder().id("WATER_MENU").title("💧 Log Water").build()
         ));
     }
 
@@ -629,21 +657,6 @@ public class OnboardingService {
                 Feel the calm settle in! ✨ Reply *PLAN* anytime for today's meals.
                 """;
         apiClient.sendTextMessage(user.getPhoneNumber(), body);
-    }
-
-    private void logYogaCompletion(User user) {
-        int currentDay = user.getYogaProgramDay() != null ? user.getYogaProgramDay() : 1;
-        int nextDay = Math.min(14, currentDay + 1);
-        user.setYogaProgramDay(nextDay);
-        int streak = (user.getStreakDays() != null ? user.getStreakDays() : 0) + 1;
-        user.setStreakDays(streak);
-        userRepository.save(user);
-
-        apiClient.sendTextMessage(user.getPhoneNumber(),
-                "🎉 *Namaste " + (user.getName() != null ? user.getName() : "") + "! Day " + currentDay + " Yoga Completed!* 🧘‍♀️\n\n" +
-                "🔥 *Consistency Streak:* " + streak + " Days Active!\n" +
-                "You've advanced to *Day " + nextDay + "* of your Healthyday 14-Day Journey.\n\n" +
-                "Nourish your body now with post-yoga hydration. Reply *PLAN* to view your recovery meals!");
     }
 
     private boolean isFoodIntakeMessage(String text) {
@@ -703,7 +716,7 @@ public class OnboardingService {
                 1. 📸 *Plate Scanner*: Snap & send a photo of any food. I instantly calculate calories, protein & clinical safety!
                 2. 🎙️ *Voice Notes*: Hold the mic and speak in Telugu, Hindi, or English!
                 3. 📝 *Natural Calorie Logger*: Text *"I ate 2 dosas"* or *"Had chicken curry"* to auto-log your intake.
-                4. 🧘 *14-Day Free Yoga Program*: Daily guided asanas, breathwork & sleep routines.
+                4. 🧘 *Guided Yoga & Asana Reference*: Curated postures & breathwork tailored to your health condition.
                 5. 💧 *Hydration Tracker*: Reply *WATER* to log cups with visual progress bars.
                 6. 👩‍🍳 *Healthy Recipes*: Text *"Recipe <Dish>"* for condition-safe 4-step home cooking.
                 7. 🔄 *Meal Swapping*: One-tap custom swaps to keep your diet exciting and sustainable.
