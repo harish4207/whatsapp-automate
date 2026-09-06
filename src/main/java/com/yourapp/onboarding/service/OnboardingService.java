@@ -145,11 +145,19 @@ public class OnboardingService {
         state.setCurrentStep("AWAITING_VITALS");
         stateRepository.save(state);
 
-        // Prompt for Age, Height, Weight
-        apiClient.sendTextMessage(user.getPhoneNumber(),
-                "Got it! Now reply with your *Age, Height (cm), and Weight (kg)* in a single line.\n\n" +
-                "📌 *Example:* `25, 175cm, 70kg`"
-        );
+        // Prompt for Age, Height, Weight with World-Class Layout
+        String vitalsPrompt = """
+                📋 *STEP 2 OF 4: YOUR BIOLOGICAL VITALS*
+                ━━━━━━━━━━━━━━━━━━━━
+                To calculate your exact metabolic rate (BMR) and daily protein targets with scientific precision, reply with your:
+                
+                *Age, Height (cm), Weight (kg)*
+                
+                📌 *Quick Example:* `26, 175cm, 72kg`
+                ━━━━━━━━━━━━━━━━━━━━
+                💡 *Privacy Note:* Your health data is securely encrypted and used strictly for your personalized guidance.
+                """;
+        apiClient.sendTextMessage(user.getPhoneNumber(), vitalsPrompt);
     }
 
     private void handleVitalsStep(User user, ConversationState state, MetaWebhookPayload.Message message) {
@@ -292,41 +300,26 @@ public class OnboardingService {
         };
 
         String summary = String.format(
-                "🎉 *Profile Complete!*\n\n" +
-                "👤 *Name:* %s\n" +
-                "🎯 *Goal:* %s\n" +
-                "📏 *Stats:* %s yrs | %.0f cm | %.0f kg\n" +
-                "🥗 *Diet:* %s (%s cuisine)\n" +
-                "🛡️ *Shield:* %s\n\n" +
-                "⚡ *Compiling your scientifically calibrated daily meal plan now...*",
+                "🌟 *PROFILE CALIBRATION COMPLETE!* 🌟\n" +
+                "━━━━━━━━━━━━━━━━━━━━\n" +
+                "👤 *Member:* %s\n" +
+                "🎯 *Journey:* %s\n" +
+                "📏 *Vitals:* %s yrs • %.0f cm • %.0f kg\n" +
+                "🥗 *Diet Style:* %s (%s cuisine)\n" +
+                "🛡️ *Clinical Shield:* %s\n" +
+                "━━━━━━━━━━━━━━━━━━━━\n" +
+                "🌿 *Your personal Healthyday Coach Aanya is compiling your Day 1 Blueprint & Yoga routine now...*",
                 user.getName() != null ? user.getName() : "Friend",
-                user.getGoal(),
+                user.getGoal() != null ? user.getGoal().replace("_", " ") : "BALANCED HEALTH",
                 user.getAge(),
                 user.getHeight(),
                 user.getWeight(),
-                user.getDietType(),
+                user.getDietType() != null ? user.getDietType().replace("_", " ") : "ALL",
                 user.getCuisine(),
                 conditionDisplay
         );
 
         apiClient.sendTextMessage(user.getPhoneNumber(), summary);
-
-        // Feature Showcase Guide: Ensure user knows all capabilities
-        String featureGuide = """
-                ✨ *WELCOME TO YOUR SMART NUTRITION ASSISTANT!*
-                
-                Here is what you can do anytime:
-                
-                1. 📸 *Food Plate Scanner*: Just take a photo of any meal or snack and send it. Dr. Aanya will analyze the calories, protein & clinical safety!
-                2. 🎙️ *Voice Notes*: Hold down the WhatsApp mic and speak in Telugu, Hindi, or English!
-                3. 📝 *Natural Calorie Logger*: Just text *"I ate 2 idlis"* or *"Had chicken curry"* to auto-log your calories!
-                4. 💧 *Hydration Tracker*: Reply *WATER* to log cups with visual progress bars.
-                5. 👩‍🍳 *Healthy Recipes*: Text *"Recipe <Dish Name>"* for condition-safe 4-step Indian cooking guides.
-                6. 🔄 *Meal Swapping*: Tap *Swap Meal* below your daily plan to choose alternative dishes.
-                
-                🚀 *Here is your customized Daily Blueprint:*
-                """;
-        apiClient.sendTextMessage(user.getPhoneNumber(), featureGuide);
 
         // Immediately generate and deliver the first day's plan
         dailyPlanService.generateDailyPlan(user, java.time.LocalDate.now());
@@ -420,10 +413,47 @@ public class OnboardingService {
             updated = true;
         }
 
+        // Natural Preference Modification Handling (e.g. "change my diet to pure veg", "I have diabetes now", "my weight is 75kg")
+        if (lower.contains("pure veg") || lower.contains("become vegetarian") || lower.contains("only veg")) {
+            user.setDietType("VEG");
+            updated = true;
+            log.info("User {} changed diet preference to VEG", user.getPhoneNumber());
+        } else if (lower.contains("non veg") || lower.contains("eat chicken") || lower.contains("eat eggs")) {
+            user.setDietType("VEG_NON_VEG");
+            updated = true;
+            log.info("User {} changed diet preference to VEG_NON_VEG", user.getPhoneNumber());
+        }
+
+        if (lower.contains("i have diabetes") || lower.contains("sugar problem") || lower.contains("got diabetes")) {
+            user.setHealthCondition("DIABETES");
+            updated = true;
+            log.info("User {} updated health condition to DIABETES", user.getPhoneNumber());
+        } else if (lower.contains("high bp") || lower.contains("hypertension")) {
+            user.setHealthCondition("HYPERTENSION");
+            updated = true;
+            log.info("User {} updated health condition to HYPERTENSION", user.getPhoneNumber());
+        } else if (lower.contains("thyroid")) {
+            user.setHealthCondition("THYROID");
+            updated = true;
+            log.info("User {} updated health condition to THYROID", user.getPhoneNumber());
+        } else if (lower.contains("pcos") || lower.contains("pcod")) {
+            user.setHealthCondition("PCOS");
+            updated = true;
+            log.info("User {} updated health condition to PCOS", user.getPhoneNumber());
+        }
+
+        Matcher weightMatcher = Pattern.compile("(?:my\\s+)?weight\\s+(?:is\\s+)?(\\d{2,3})\\s*(?:kg)?", Pattern.CASE_INSENSITIVE).matcher(text);
+        if (weightMatcher.find()) {
+            double newWeight = Double.parseDouble(weightMatcher.group(1));
+            user.setWeight(newWeight);
+            updated = true;
+            log.info("User {} updated weight to {} kg", user.getPhoneNumber(), newWeight);
+        }
+
         if (updated) {
             userRepository.save(user);
-            log.info("Updated longitudinal care notes for user {}: notes='{}', mood='{}'", 
-                    user.getPhoneNumber(), user.getClinicalNotes(), user.getLastMood());
+            log.info("Updated longitudinal care notes for user {}: notes='{}', mood='{}', diet='{}', condition='{}'", 
+                    user.getPhoneNumber(), user.getClinicalNotes(), user.getLastMood(), user.getDietType(), user.getHealthCondition());
         }
     }
 
@@ -662,8 +692,29 @@ public class OnboardingService {
     }
 
     private void sendGoalPrompt(String phoneNumber) {
+        String welcomeCard = """
+                ✨ *WELCOME TO HEALTHYDAY!* ✨
+                *Health. Happiness. Community.*
+                ━━━━━━━━━━━━━━━━━━━━
+                Namaste! I am *Aanya*, your dedicated Healthyday Health, Yoga & Nutrition Coach.
+                
+                Here is everything I do for you right here on WhatsApp:
+                
+                1. 📸 *Plate Scanner*: Snap & send a photo of any food. I instantly calculate calories, protein & clinical safety!
+                2. 🎙️ *Voice Notes*: Hold the mic and speak in Telugu, Hindi, or English!
+                3. 📝 *Natural Calorie Logger*: Text *"I ate 2 dosas"* or *"Had chicken curry"* to auto-log your intake.
+                4. 🧘 *14-Day Free Yoga Program*: Daily guided asanas, breathwork & sleep routines.
+                5. 💧 *Hydration Tracker*: Reply *WATER* to log cups with visual progress bars.
+                6. 👩‍🍳 *Healthy Recipes*: Text *"Recipe <Dish>"* for condition-safe 4-step home cooking.
+                7. 🔄 *Meal Swapping*: One-tap custom swaps to keep your diet exciting and sustainable.
+                
+                ━━━━━━━━━━━━━━━━━━━━
+                🌱 *Let's personalize your daily routine (Takes 30 seconds)!*
+                What is your primary fitness goal?
+                """;
+
         apiClient.sendButtonMessage(phoneNumber,
-                "👋 Welcome to *Nutrition Engine*!\n\nLet's build your personalized nutrition plan. What is your primary fitness goal?",
+                welcomeCard,
                 List.of(
                         ButtonOption.builder().id("GOAL_FAT_LOSS").title("Fat Loss 🔥").build(),
                         ButtonOption.builder().id("GOAL_MAINTENANCE").title("Maintain ⚖️").build(),

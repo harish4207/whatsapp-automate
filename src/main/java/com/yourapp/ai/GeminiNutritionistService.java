@@ -255,10 +255,25 @@ public class GeminiNutritionistService {
      * Returns: int[] {calories, protein}
      */
     public int[] estimateNutritionalContent(String foodText) {
-        String prompt = "You are a nutritional database. For this Indian food item: '" + foodText +
+        String prompt = "You are a clinical nutritional database. For this Indian food item: '" + foodText +
                 "', reply ONLY with two numbers separated by a comma: estimated_calories,estimated_protein_in_grams. " +
                 "Example response format: 350,12. Do not write any other words or letters.";
         try {
+            // Offload structured calorie extraction to NVIDIA NIM first to conserve Gemini tokens
+            if (nvidiaApiKey != null && !nvidiaApiKey.isBlank()) {
+                String nvidiaRaw = callNvidiaNim("You are a strict nutritionist API that outputs ONLY numbers.", prompt);
+                if (nvidiaRaw != null && !nvidiaRaw.isBlank()) {
+                    String clean = nvidiaRaw.replaceAll("[^0-9,.]", "").trim();
+                    String[] parts = clean.split(",");
+                    if (parts.length >= 2) {
+                        int cals = (int) Math.round(Double.parseDouble(parts[0].trim()));
+                        int prot = (int) Math.round(Double.parseDouble(parts[1].trim()));
+                        log.info("NVIDIA NIM successfully estimated macros for '{}': {} kcal, {}g protein", foodText, cals, prot);
+                        return new int[]{cals, prot};
+                    }
+                }
+            }
+
             Map<String, Object> requestPayload = Map.of(
                     "contents", List.of(
                             Map.of(
