@@ -308,7 +308,7 @@ public class OnboardingService {
                 "🥗 *Diet Style:* %s (%s cuisine)\n" +
                 "🛡️ *Clinical Shield:* %s\n" +
                 "━━━━━━━━━━━━━━━━━━━━\n" +
-                "🌿 *Your personal Healthyday Coach Aanya is compiling your Day 1 Blueprint & Yoga routine now...*",
+                "🌿 *Your personal Healthyday Coach Aanya is compiling your Day 1 Blueprint now...*",
                 user.getName() != null ? user.getName() : "Friend",
                 user.getGoal() != null ? user.getGoal().replace("_", " ") : "BALANCED HEALTH",
                 user.getAge(),
@@ -342,8 +342,6 @@ public class OnboardingService {
             handleVoiceNoteUpload(user, message);
         } else if ("PLAN".equalsIgnoreCase(text) || "TODAY".equalsIgnoreCase(text)) {
             dailyPlanService.generateDailyPlan(user, java.time.LocalDate.now());
-        } else if ("YOGA".equalsIgnoreCase(text) || "YOGA_MENU".equals(actionId)) {
-            sendHealthydayYogaRoutine(user);
         } else if ("BREATH".equalsIgnoreCase(text) || "BREATHWORK".equalsIgnoreCase(text) || "BREATH_MENU".equals(actionId)) {
             sendHealthydayBreathwork(user);
         } else if ("WATER_MENU".equals(actionId) || "WATER".equalsIgnoreCase(text)) {
@@ -579,64 +577,6 @@ public class OnboardingService {
                 "💡 Reply *WATER* to log hydration or send a *food photo* 📸 to scan calories!");
     }
 
-    private void sendHealthydayYogaRoutine(User user) {
-        String name = user.getName() != null && !user.getName().isBlank() ? user.getName() : "Friend";
-        String condition = user.getHealthCondition() != null ? user.getHealthCondition().toUpperCase() : "NONE";
-
-        String yogaSequence = switch (condition) {
-            case "DIABETES" -> """
-                    • *Mandukasana (Frog Pose)*: 3 rounds (activates pancreas & insulin receptors)
-                    • *Paschimottanasana (Seated Forward Bend)*: 2 mins
-                    • *Vajrasana (Thunderbolt)*: 5 mins after meals for digestion
-                    • *Kapalbhati Pranayama*: 3 rounds of 30 strokes
-                    """;
-            case "HYPERTENSION" -> """
-                    • *Shavasana with Deep Diaphragmatic Breath*: 5 mins
-                    • *Anulom Vilom (Alternate Nostril)*: 5 mins (lowers systolic pressure)
-                    • *Setu Bandhasana (Bridge Pose)*: 3 slow gentle reps
-                    • *Balasana (Child's Pose)*: 3 mins to calm the central nervous system
-                    """;
-            case "THYROID" -> """
-                    • *Sarvangasana (Shoulder Stand)* or *Viparita Karani (Legs-up-the-wall)*: 3 mins
-                    • *Matsyasana (Fish Pose)*: Stimulates thyroid & parathyroid glands
-                    • *Ujjayi Breath*: 5 mins deep ocean breath
-                    • *Bhujangasana (Cobra Pose)*: 3 gentle reps
-                    """;
-            case "PCOS" -> """
-                    • *Baddha Konasana (Butterfly Pose)*: 3 mins (stimulates ovaries & pelvis)
-                    • *Supta Baddha Konasana (Reclining Butterfly)*: 5 mins
-                    • *Bhujangasana (Cobra Pose)*: 3 reps for endocrine balance
-                    • *Nadi Shodhana Pranayama*: 5 mins hormone soothing
-                    """;
-            case "FATTY_LIVER" -> """
-                    • *Ardha Matsyendrasana (Spinal Twist)*: Compresses and detoxifies hepatic tissue
-                    • *Dhanurasana (Bow Pose)*: 3 reps for abdominal blood circulation
-                    • *Pawanmuktasana (Wind-Relieving Pose)*: 2 mins each leg
-                    • *Anulom Vilom*: 5 mins
-                    """;
-            default -> """
-                    • *Surya Namaskar (Sun Salutations)*: 4 to 6 mindful rounds
-                    • *Trikonasana (Triangle Pose)*: 1 min each side
-                    • *Vajrasana (Thunderbolt Pose)*: 3 mins post-meals
-                    • *Anulom Vilom Pranayama*: 5 mins for clarity & focus
-                    """;
-        };
-
-        String body = String.format(
-                "🧘 *HEALTHYDAY YOGA & ASANA REFERENCE GUIDE* 🌿\n\n" +
-                "Namaste %s! Here is your curated yoga sequence designed specifically for your *%s* profile:\n\n" +
-                "%s\n" +
-                "💡 *Yogic Guidance:* Practice on an empty stomach or 2.5 hours after food. Sip warm water.\n\n" +
-                "Feel the energy flow through your body! ✨ Tap below for calming breathwork or return to your plan:",
-                name, user.getHealthCondition() != null ? user.getHealthCondition() : "Fitness", yogaSequence
-        );
-
-        apiClient.sendButtonMessage(user.getPhoneNumber(), body, List.of(
-                ButtonOption.builder().id("BREATH_MENU").title("💨 3-Min Breathwork").build(),
-                ButtonOption.builder().id("WATER_MENU").title("💧 Log Water").build()
-        ));
-    }
-
     private void sendHealthydayBreathwork(User user) {
         String body = """
                 💨 *HEALTHYDAY PRANAYAMA & BREATHWORK* 🌸
@@ -709,17 +649,16 @@ public class OnboardingService {
                 ✨ *WELCOME TO HEALTHYDAY!* ✨
                 *Health. Happiness. Community.*
                 ━━━━━━━━━━━━━━━━━━━━
-                Namaste! I am *Aanya*, your dedicated Healthyday Health, Yoga & Nutrition Coach.
+                Namaste! I am *Aanya*, your dedicated Healthyday Health & Nutrition Coach.
                 
                 Here is everything I do for you right here on WhatsApp:
                 
-                1. 📸 *Plate Scanner*: Snap & send a photo of any food. I instantly calculate calories, protein & clinical safety!
-                2. 🎙️ *Voice Notes*: Hold the mic and speak in Telugu, Hindi, or English!
-                3. 📝 *Natural Calorie Logger*: Text *"I ate 2 dosas"* or *"Had chicken curry"* to auto-log your intake.
-                4. 🧘 *Guided Yoga & Asana Reference*: Curated postures & breathwork tailored to your health condition.
-                5. 💧 *Hydration Tracker*: Reply *WATER* to log cups with visual progress bars.
-                6. 👩‍🍳 *Healthy Recipes*: Text *"Recipe <Dish>"* for condition-safe 4-step home cooking.
-                7. 🔄 *Meal Swapping*: One-tap custom swaps to keep your diet exciting and sustainable.
+                1. 📸 *Food Plate Scanner*: Snap & send a photo of any meal or snack. I calculate calories, protein & clinical safety!
+                2. 🎙️ *Voice Notes*: Hold down the mic and speak in Telugu, Hindi, or English!
+                3. 📝 *Natural Calorie Logger*: Text *"I ate 2 idlis"* or *"Had chicken curry"* to auto-log your intake.
+                4. 💧 *Hydration Tracker*: Reply *WATER* to log cups with visual progress bars.
+                5. 👩‍🍳 *Healthy Recipes*: Text *"Recipe <Dish>"* for condition-safe 4-step home cooking.
+                6. 🔄 *Meal Swapping*: One-tap custom swaps to keep your diet exciting and sustainable.
                 
                 ━━━━━━━━━━━━━━━━━━━━
                 🌱 *Let's personalize your daily routine (Takes 30 seconds)!*

@@ -250,8 +250,8 @@ public class DailyPlanService {
 
         // Action buttons
         List<ButtonOption> buttons = List.of(
-                ButtonOption.builder().id("YOGA_MENU").title("🧘 Today's Yoga").build(),
                 ButtonOption.builder().id("SWAP_MENU").title("🔄 Swap Meal").build(),
+                ButtonOption.builder().id("WATER_MENU").title("💧 Log Water").build(),
                 ButtonOption.builder().id("MARK_DONE").title("✅ Completed").build()
         );
 
