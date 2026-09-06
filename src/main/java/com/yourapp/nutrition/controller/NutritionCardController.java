@@ -35,6 +35,23 @@ public class NutritionCardController {
     private final UserRepository userRepository;
     private final NutritionCardRenderer cardRenderer;
 
+    @GetMapping(value = "/coach-mohan.png", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> getCoachMohanImage() {
+        try (var is = getClass().getResourceAsStream("/static/coach-mohan.png")) {
+            if (is != null) {
+                byte[] bytes = is.readAllBytes();
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.IMAGE_PNG);
+                headers.setContentLength(bytes.length);
+                headers.setCacheControl("public, max-age=86400");
+                return new ResponseEntity<>(bytes, headers, HttpStatus.OK);
+            }
+        } catch (Exception e) {
+            log.error("Failed to load coach-mohan.png: {}", e.getMessage());
+        }
+        return ResponseEntity.notFound().build();
+    }
+
     @GetMapping(value = "/{planId}.png", produces = MediaType.IMAGE_PNG_VALUE)
     public ResponseEntity<byte[]> getPlanCardImage(@PathVariable Long planId) {
         log.info("Serving visual nutrition card for Plan ID: {}", planId);

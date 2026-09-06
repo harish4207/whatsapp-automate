@@ -39,6 +39,9 @@ public class OnboardingService {
     private final com.yourapp.nutrition.repository.DailyProgressRepository progressRepository;
     private final com.yourapp.whatsapp.repository.MessageLogRepository messageLogRepository;
 
+    @org.springframework.beans.factory.annotation.Value("${app.public.base-url:}")
+    private String publicBaseUrl;
+
     private static final Pattern VITALS_PATTERN = Pattern.compile("(\\d{1,3})\\s*[,\\s]\\s*(\\d{2,3})\\s*(?:cm)?\\s*[,\\s]\\s*(\\d{2,3})\\s*(?:kg)?", Pattern.CASE_INSENSITIVE);
 
     @Transactional
@@ -85,6 +88,12 @@ public class OnboardingService {
                 break;
             case "AWAITING_CONDITIONS":
                 handleConditionsStep(user, state, message);
+                break;
+            case "AWAITING_ENERGY_SLEEP":
+                handleEnergySleepStep(user, state, message);
+                break;
+            case "AWAITING_GUT_HEALTH":
+                handleGutHealthStep(user, state, message);
                 break;
             default:
                 sendGoalPrompt(user.getPhoneNumber());
@@ -285,12 +294,91 @@ public class OnboardingService {
         user.setHealthCondition(condition);
         userRepository.save(user);
 
+        // Advance to Step 7: Energy & Sleep Pattern
+        state.setCurrentStep("AWAITING_ENERGY_SLEEP");
+        stateRepository.save(state);
+
+        apiClient.sendButtonMessage(user.getPhoneNumber(),
+                "😴 *Step 7/8: Daily Energy & Sleep Pattern* 🌙\n\n" +
+                "To optimize your meal timing, nutrient delivery, and prevent fatigue, tell Coach Mohan about your typical day:",
+                List.of(
+                        ButtonOption.builder().id("ENERGY_HIGH").title("High Energy ⚡").build(),
+                        ButtonOption.builder().id("ENERGY_AFTERNOON_DIP").title("Afternoon Slump 🥱").build(),
+                        ButtonOption.builder().id("ENERGY_STRESS_SLEEP").title("Disturbed Sleep 🌙").build()
+                )
+        );
+    }
+
+    private void handleEnergySleepStep(User user, ConversationState state, MetaWebhookPayload.Message message) {
+        String buttonId = extractButtonId(message);
+        if (buttonId == null || !buttonId.startsWith("ENERGY_")) {
+            apiClient.sendButtonMessage(user.getPhoneNumber(),
+                    "😴 *Step 7/8: Daily Energy & Sleep Pattern* 🌙\n\nPlease tap the option that best describes your daily energy:",
+                    List.of(
+                            ButtonOption.builder().id("ENERGY_HIGH").title("High Energy ⚡").build(),
+                            ButtonOption.builder().id("ENERGY_AFTERNOON_DIP").title("Afternoon Slump 🥱").build(),
+                            ButtonOption.builder().id("ENERGY_STRESS_SLEEP").title("Disturbed Sleep 🌙").build()
+                    )
+            );
+            return;
+        }
+
+        String energy = switch (buttonId) {
+            case "ENERGY_HIGH" -> "High & Energetic ⚡";
+            case "ENERGY_AFTERNOON_DIP" -> "Afternoon Fatigue & Slump 🥱";
+            case "ENERGY_STRESS_SLEEP" -> "Disturbed Sleep & Stress 🌙";
+            default -> "Balanced Energy 🌿";
+        };
+        user.setLastMood(energy);
+        userRepository.save(user);
+
+        // Advance to Step 8: Digestive & Gut Comfort
+        state.setCurrentStep("AWAITING_GUT_HEALTH");
+        stateRepository.save(state);
+
+        apiClient.sendButtonMessage(user.getPhoneNumber(),
+                "🌿 *Step 8/8: Digestive & Gut Comfort* 🥣\n\n" +
+                "Your gut is the engine of your metabolism and overall vitality. How does your digestion feel on regular days?",
+                List.of(
+                        ButtonOption.builder().id("GUT_BLOATING").title("Bloating / Gas 💨").build(),
+                        ButtonOption.builder().id("GUT_CRAVINGS").title("Sugar Cravings 🍫").build(),
+                        ButtonOption.builder().id("GUT_SMOOTH").title("Light & Smooth ✨").build()
+                )
+        );
+    }
+
+    private void handleGutHealthStep(User user, ConversationState state, MetaWebhookPayload.Message message) {
+        String buttonId = extractButtonId(message);
+        if (buttonId == null || !buttonId.startsWith("GUT_")) {
+            apiClient.sendButtonMessage(user.getPhoneNumber(),
+                    "🌿 *Step 8/8: Digestive & Gut Comfort* 🥣\n\nPlease tap the option that best matches your digestion:",
+                    List.of(
+                            ButtonOption.builder().id("GUT_BLOATING").title("Bloating / Gas 💨").build(),
+                            ButtonOption.builder().id("GUT_CRAVINGS").title("Sugar Cravings 🍫").build(),
+                            ButtonOption.builder().id("GUT_SMOOTH").title("Light & Smooth ✨").build()
+                    )
+            );
+            return;
+        }
+
+        String gut = switch (buttonId) {
+            case "GUT_BLOATING" -> "Post-Meal Bloating & Acidity 💨";
+            case "GUT_CRAVINGS" -> "Frequent Sugar & Snack Cravings 🍫";
+            case "GUT_SMOOTH" -> "Comfortable & Smooth Digestion ✨";
+            default -> "Healthy Gut Balance 🌿";
+        };
+
+        String notes = "Energy Profile: " + (user.getLastMood() != null ? user.getLastMood() : "Balanced") + 
+                " | Gut Health: " + gut;
+        user.setClinicalNotes(notes);
+        userRepository.save(user);
+
         // Onboarding complete!
         state.setState("ACTIVE");
         state.setCurrentStep("COMPLETE");
         stateRepository.save(state);
 
-        String conditionDisplay = switch (condition) {
+        String conditionDisplay = switch (user.getHealthCondition() != null ? user.getHealthCondition() : "NONE") {
             case "DIABETES" -> "Diabetes Safe (Low GI) 🩺";
             case "HYPERTENSION" -> "Hypertension / Low Sodium 🫀";
             case "THYROID" -> "Thyroid Support 🦋";
@@ -307,6 +395,8 @@ public class OnboardingService {
                 "📏 *Vitals:* %s yrs • %.0f cm • %.0f kg\n" +
                 "🥗 *Diet Style:* %s (%s cuisine)\n" +
                 "🛡️ *Clinical Shield:* %s\n" +
+                "⚡ *Vitality Rhythm:* %s\n" +
+                "🥣 *Gut Calibration:* %s\n" +
                 "━━━━━━━━━━━━━━━━━━━━\n" +
                 "🌿 *Your personal Healthyday Coach Mohan is compiling your Day 1 Blueprint now...*",
                 user.getName() != null ? user.getName() : "Friend",
@@ -316,7 +406,9 @@ public class OnboardingService {
                 user.getWeight(),
                 user.getDietType() != null ? user.getDietType().replace("_", " ") : "ALL",
                 user.getCuisine(),
-                conditionDisplay
+                conditionDisplay,
+                user.getLastMood() != null ? user.getLastMood() : "High & Energetic ⚡",
+                gut
         );
 
         apiClient.sendTextMessage(user.getPhoneNumber(), summary);
@@ -373,6 +465,8 @@ public class OnboardingService {
             apiClient.sendTextMessage(user.getPhoneNumber(), recipe);
         } else if (isFoodIntakeMessage(text)) {
             handleFoodIntakeLog(user, text);
+        } else if (isGreetingOrHelpMessage(text) || "HELP_MENU".equals(actionId)) {
+            sendActiveUserFeatureShowcase(user);
         } else if (text != null && !text.isBlank()) {
             log.info("Routing free-form nutrition inquiry to AI Clinical Service for user: {}", user.getPhoneNumber());
             
@@ -645,6 +739,12 @@ public class OnboardingService {
     }
 
     private void sendGoalPrompt(String phoneNumber) {
+        if (publicBaseUrl != null && !publicBaseUrl.isBlank()) {
+            String imageUrl = publicBaseUrl + "/api/cards/coach-mohan.png";
+            log.info("Sending Coach Mohan welcome image to {}: {}", phoneNumber, imageUrl);
+            apiClient.sendImageMessage(phoneNumber, imageUrl, "✨ *Namaste! I am Mohan, your Healthyday Health & Nutrition Coach.*");
+        }
+
         String welcomeCard = """
                 ✨ *WELCOME TO HEALTHYDAY!* ✨
                 *Health. Happiness. Community.*
@@ -673,6 +773,44 @@ public class OnboardingService {
                         ButtonOption.builder().id("GOAL_MUSCLE_GAIN").title("Muscle Gain 💪").build()
                 )
         );
+    }
+
+    private boolean isGreetingOrHelpMessage(String text) {
+        if (text == null) return false;
+        String clean = text.trim().toLowerCase().replaceAll("[!?,.]", "");
+        if (clean.equals("hi") || clean.equals("hello") || clean.equals("hey")
+                || clean.equals("namaste") || clean.equals("vanakkam") || clean.equals("good morning")
+                || clean.equals("good afternoon") || clean.equals("good evening")
+                || clean.equals("help") || clean.equals("menu") || clean.equals("features")) {
+            return true;
+        }
+        return clean.startsWith("hi ") || clean.startsWith("hello ") || clean.startsWith("hey ")
+                || clean.startsWith("namaste ") || clean.startsWith("help ") || clean.startsWith("menu ");
+    }
+
+    private void sendActiveUserFeatureShowcase(User user) {
+        String name = user.getName() != null && !user.getName().isBlank() ? user.getName() : "Friend";
+        String body = String.format(
+                "✨ *Namaste %s! Coach Mohan here.* 🌿\n" +
+                "*Health. Happiness. Community.*\n" +
+                "━━━━━━━━━━━━━━━━━━━━\n" +
+                "I'm right here with you! Whenever you need anything, here is what I do for you:\n\n" +
+                "1. 📸 *Food Plate Scanner*: Send any meal photo. I calculate calories, protein & clinical safety!\n" +
+                "2. 🎙️ *Voice Notes*: Speak to me in Telugu, Hindi, or English!\n" +
+                "3. 📝 *Natural Calorie Logger*: Text *\"I ate 2 idlis\"* or *\"Had chicken curry\"* to auto-log.\n" +
+                "4. 💧 *Hydration Tracker*: Reply *WATER* to log cups with visual progress bars.\n" +
+                "5. 👩‍🍳 *Healthy Recipes*: Text *\"Recipe <Dish>\"* for condition-safe 4-step cooking.\n" +
+                "6. 🔄 *Meal Swapping*: One-tap custom swaps to keep your diet exciting.\n\n" +
+                "━━━━━━━━━━━━━━━━━━━━\n" +
+                "How would you like to take care of your body right now?",
+                name
+        );
+
+        apiClient.sendButtonMessage(user.getPhoneNumber(), body, List.of(
+                ButtonOption.builder().id("PLAN").title("📋 Today's Plan").build(),
+                ButtonOption.builder().id("WATER_MENU").title("💧 Log Water").build(),
+                ButtonOption.builder().id("SWAP_MENU").title("🔄 Swap Meal").build()
+        ));
     }
 
     private String extractButtonId(MetaWebhookPayload.Message message) {

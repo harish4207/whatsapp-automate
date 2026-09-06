@@ -147,8 +147,53 @@ class OnboardingServiceTest {
 
         onboardingService.handleIncomingMessage(testPhone, message, "Suresh");
 
+        ConversationState step7State = stateRepository.findByPhoneNumber(testPhone).orElseThrow();
+        assertEquals("AWAITING_ENERGY_SLEEP", step7State.getCurrentStep());
+
+        // Step 7: Select Energy
+        MetaWebhookPayload.Message msgEnergy = new MetaWebhookPayload.Message();
+        msgEnergy.setType("interactive");
+        var interactiveEnergy = new MetaWebhookPayload.Interactive();
+        var btnEnergy = new MetaWebhookPayload.ButtonReply();
+        btnEnergy.setId("ENERGY_HIGH");
+        interactiveEnergy.setButtonReply(btnEnergy);
+        msgEnergy.setInteractive(interactiveEnergy);
+
+        onboardingService.handleIncomingMessage(testPhone, msgEnergy, "Suresh");
+
+        ConversationState step8State = stateRepository.findByPhoneNumber(testPhone).orElseThrow();
+        assertEquals("AWAITING_GUT_HEALTH", step8State.getCurrentStep());
+
+        // Step 8: Select Gut Health
+        MetaWebhookPayload.Message msgGut = new MetaWebhookPayload.Message();
+        msgGut.setType("interactive");
+        var interactiveGut = new MetaWebhookPayload.Interactive();
+        var btnGut = new MetaWebhookPayload.ButtonReply();
+        btnGut.setId("GUT_SMOOTH");
+        interactiveGut.setButtonReply(btnGut);
+        msgGut.setInteractive(interactiveGut);
+
+        onboardingService.handleIncomingMessage(testPhone, msgGut, "Suresh");
+
         ConversationState finalState = stateRepository.findByPhoneNumber(testPhone).orElseThrow();
         assertEquals("ACTIVE", finalState.getState());
         assertEquals("COMPLETE", finalState.getCurrentStep());
+    }
+
+    @Test
+    @DisplayName("Active User: Greeting ('Hi') should deliver Feature Showcase Card")
+    void testActiveUserGreeting_DeliversShowcase() {
+        User user = userRepository.save(User.builder().phoneNumber(testPhone).name("Suresh").active(true).build());
+        stateRepository.save(ConversationState.builder().userId(user.getId()).phoneNumber(testPhone).state("ACTIVE").currentStep("COMPLETE").build());
+
+        MetaWebhookPayload.Message message = new MetaWebhookPayload.Message();
+        message.setType("text");
+        var text = new MetaWebhookPayload.Text();
+        text.setBody("Hello Coach Mohan!");
+        message.setText(text);
+
+        onboardingService.handleIncomingMessage(testPhone, message, "Suresh");
+
+        verify(apiClient).sendButtonMessage(eq(testPhone), any(), any());
     }
 }
