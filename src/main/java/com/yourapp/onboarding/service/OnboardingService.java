@@ -56,7 +56,16 @@ public class OnboardingService {
                 .orElseGet(() -> createInitialState(user.getId(), phoneNumber));
 
         // 2. Route based on state & step
-        if ("ACTIVE".equalsIgnoreCase(state.getState())) {
+        if ("ACTIVE".equalsIgnoreCase(state.getState()) || "COMPLETE".equalsIgnoreCase(state.getCurrentStep())) {
+            handleActiveUserState(user, message);
+            return;
+        }
+
+        // Permanent safeguard: if user already completed full onboarding, lock into ACTIVE forever
+        if (user.getClinicalNotes() != null) {
+            state.setState("ACTIVE");
+            state.setCurrentStep("COMPLETE");
+            stateRepository.save(state);
             handleActiveUserState(user, message);
             return;
         }
@@ -71,6 +80,12 @@ public class OnboardingService {
 
         switch (step) {
             case "START":
+                // Send starting image strictly ONCE!
+                sendWelcomeImageOnce(user.getPhoneNumber());
+                sendGoalPrompt(user.getPhoneNumber());
+                state.setCurrentStep("AWAITING_GOAL");
+                stateRepository.save(state);
+                break;
             case "AWAITING_GOAL":
                 handleGoalStep(user, state, message);
                 break;
@@ -96,6 +111,7 @@ public class OnboardingService {
                 handleGutHealthStep(user, state, message);
                 break;
             default:
+                sendWelcomeImageOnce(user.getPhoneNumber());
                 sendGoalPrompt(user.getPhoneNumber());
                 state.setCurrentStep("AWAITING_GOAL");
                 stateRepository.save(state);
@@ -107,11 +123,15 @@ public class OnboardingService {
         String buttonId = extractButtonId(message);
 
         if (buttonId == null || !buttonId.startsWith("GOAL_")) {
-            sendGoalPrompt(user.getPhoneNumber());
-            if (!"AWAITING_GOAL".equals(state.getCurrentStep())) {
-                state.setCurrentStep("AWAITING_GOAL");
-                stateRepository.save(state);
-            }
+            // Re-prompt buttons only (do NOT re-send image)
+            apiClient.sendButtonMessage(user.getPhoneNumber(),
+                    "Please choose your primary fitness goal using the buttons below:",
+                    List.of(
+                            ButtonOption.builder().id("GOAL_FAT_LOSS").title("Fat Loss 🔥").build(),
+                            ButtonOption.builder().id("GOAL_MAINTENANCE").title("Maintain ⚖️").build(),
+                            ButtonOption.builder().id("GOAL_MUSCLE_GAIN").title("Muscle Gain 💪").build()
+                    )
+            );
             return;
         }
 
@@ -738,13 +758,16 @@ public class OnboardingService {
         apiClient.sendTextMessage(user.getPhoneNumber(), response);
     }
 
-    private void sendGoalPrompt(String phoneNumber) {
-        if (publicBaseUrl != null && !publicBaseUrl.isBlank()) {
-            String imageUrl = publicBaseUrl + "/api/cards/coach-mohan.png";
-            log.info("Sending Coach Mohan welcome image to {}: {}", phoneNumber, imageUrl);
-            apiClient.sendImageMessage(phoneNumber, imageUrl, "✨ *Namaste! I am Mohan, your Healthyday Health & Nutrition Coach.*");
-        }
+    private void sendWelcomeImageOnce(String phoneNumber) {
+        String baseUrl = (publicBaseUrl != null && !publicBaseUrl.isBlank()) 
+                ? publicBaseUrl 
+                : "https://whatsapp-automate-i8w6.onrender.com";
+        String imageUrl = baseUrl + "/api/cards/coach-mohan.png";
+        log.info("Sending Coach Mohan welcome image to {}: {}", phoneNumber, imageUrl);
+        apiClient.sendImageMessage(phoneNumber, imageUrl, "✨ *Namaste! I am Mohan, your Healthyday Health & Nutrition Coach.*");
+    }
 
+    private void sendGoalPrompt(String phoneNumber) {
         String welcomeCard = """
                 ✨ *WELCOME TO HEALTHYDAY!* ✨
                 *Health. Happiness. Community.*
@@ -779,13 +802,16 @@ public class OnboardingService {
         if (text == null) return false;
         String clean = text.trim().toLowerCase().replaceAll("[!?,.]", "");
         if (clean.equals("hi") || clean.equals("hello") || clean.equals("hey")
-                || clean.equals("namaste") || clean.equals("vanakkam") || clean.equals("good morning")
-                || clean.equals("good afternoon") || clean.equals("good evening")
-                || clean.equals("help") || clean.equals("menu") || clean.equals("features")) {
+                || clean.equals("namaste") || clean.equals("namaskar") || clean.equals("vanakkam") || clean.equals("pranam")
+                || clean.equals("good morning") || clean.equals("good afternoon") || clean.equals("good evening")
+                || clean.equals("help") || clean.equals("menu") || clean.equals("features")
+                || clean.equals("options") || clean.equals("commands") || clean.equals("start")
+                || clean.equals("how to use") || clean.equals("what can you do")) {
             return true;
         }
         return clean.startsWith("hi ") || clean.startsWith("hello ") || clean.startsWith("hey ")
-                || clean.startsWith("namaste ") || clean.startsWith("help ") || clean.startsWith("menu ");
+                || clean.startsWith("namaste ") || clean.startsWith("help ") || clean.startsWith("menu ")
+                || clean.startsWith("features ") || clean.contains("what can you do") || clean.contains("how do you help");
     }
 
     private void sendActiveUserFeatureShowcase(User user) {

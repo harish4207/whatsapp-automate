@@ -26,4 +26,4 @@ services:
       - key: NVIDIA_NIM_MODEL
         value: meta/llama-3.2-11b-vision-instruct
       - key: APP_PUBLIC_BASE_URL
-        sync: false
+        value: https://whatsapp-automate-i8w6.onrender.com
